@@ -1,0 +1,10 @@
+# IDE
+.vscode/
+
+# Build artifacts
+obj_files/
+input/
+tcp_less
+
+# Logs
+wireshark_logs/
