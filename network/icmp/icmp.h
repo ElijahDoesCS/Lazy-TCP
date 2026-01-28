@@ -6,6 +6,13 @@
 #include <string.h>
 
 /**
+ * @brief Update the checksum of the ICMP header
+ * @param icmp_pack the packet header we are updating
+ * @param pack_len the length of the packet header
+ */
+void icmp_update_checksum(ICMP_Header *icmp_pack, int pack_len);
+
+/**
  * @brief Dispatch the ICMP packet to its implementation function
  * @param ip_pack is the IP packet that wraps the ICMP packet
  * @param icmp_pack is the ICMP packet
@@ -19,7 +26,5 @@ void icmp_echo_reply(IPv4_Header *ip_pack, ICMP_Header *icmp_pack);
  * @param icmp_pack is the ICMP packet
  */
 void icmp_dispatch(IPv4_Header *ip_pack, ICMP_Header *icmp_pack);
-
-void icmp_print(ICMP_Header *packet);
 
 #endif

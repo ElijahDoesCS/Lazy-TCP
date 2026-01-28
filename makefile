@@ -3,25 +3,21 @@ CFLAGS = -Wall -Wextra -g
 TARGET = tcp_less
 OBJ_DIR = obj_files
 
-# --- Module Variables ---
 ENTRY    = main.c
 V_DEVICE = v_device/v_device.c
 T_POOL   = thread_pool/thread_pool.c
 NETWORK  = network/network.c
 ICMP     = network/icmp/icmp.c
 IP       = network/ip/ip.c
+TCP		 = network/tcp/tcp.c
+DEBUG 	 = debug/debug.c
 
-# --- Combine them into one list ---
-SRCS = $(ENTRY) $(V_DEVICE) $(T_POOL) $(NETWORK) $(ICMP) $(IP)
+SRCS = $(ENTRY) $(V_DEVICE) $(T_POOL) $(NETWORK) $(ICMP) $(IP) $(TCP) $(DEBUG)
 
-# --- Object Logic ---
-# This takes the list in SRCS, strips paths, and puts them in OBJ_DIR
 OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
 
 # VPATH tells 'make' where to search for the .c files listed in SRCS
 VPATH = $(dir $(SRCS))
-
-# --- Rules ---
 
 all: $(TARGET)
 

@@ -9,13 +9,13 @@ struct Job {
     int kq;
 };
 
+# define WORKER_THREAD_COUNT 16
+# define LOAD_BOUND 1280 
+
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
-# define WORKER_THREAD_COUNT 16
-# define LOAD_BOUND 1280 
 
 int job_handle(/*Job *op*/);
 int job_enqueue(Job op);
