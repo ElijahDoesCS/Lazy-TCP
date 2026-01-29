@@ -22,7 +22,7 @@
 sudo ./tcp_less $(cat ./input/ip.txt) $(cat ./input/tun.txt) vb
 
 ### Packet Generation Script
-
+sudo python3 ./packet_cooking/gen.py
 
 ### Notes on TCP
 - Have to support control bits for SYN, ACK, FIN, RST control bits
@@ -32,3 +32,4 @@ sudo ./tcp_less $(cat ./input/ip.txt) $(cat ./input/tun.txt) vb
 - Have to implement an unsigned window size
 - Implement TCP timestamps and timing mechanisms
 - Implement a retransmission queue
+- Not handling options

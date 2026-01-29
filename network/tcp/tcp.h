@@ -26,15 +26,6 @@ enum TCP_State {
     TCP_CLOSE_WAIT,    // They closed, we need to close too
 };
 
-enum TCP_Event {
-    TCP_EVENT_OPEN,    // A local user wants to establish a conection
-    TCP_EVENT_SEND,    // The local user has data they want to transmit
-    TCP_EVENT_RECEIVE, // A segment arrived from the network
-    TCP_EVENT_CLOSE,   // The local user is done sending data
-    TCP_EVENT_ABORT,   // Terminate the connection immediately
-    TCP_EVENT_TIMEOUT  // Packet exceeded time interval
-};
-
 struct TCP_Connection_ID {
     int src_ip;
     int src_port;
@@ -78,7 +69,7 @@ struct TCP_IP_Pseudo_Header {
     uint8_t zero;
     uint8_t proto;
     uint16_t tcp_len; // The length of the tcp header + the datagram length
-};
+} __attribute__((packed));
 
 struct TCP_Server_Instance {
     TCB *head;
@@ -134,7 +125,7 @@ bool tcp_compare_id(TCP_Connection_ID *id_a, TCP_Connection_ID *id_b);
  * @param pseudo_ip the pseudo ip header the prepends the tcp header
  * @param returns true if we couldn't allocate memory for the pseudo packet
  */
-bool tcp_update_checksum(TCP_Header *tcp_pack, int tcp_len, TCP_IP_Pseudo_Header *pseudo_ip,  int pseudo_len);
+void tcp_update_checksum(TCP_Header *tcp_pack, int tcp_len, TCP_IP_Pseudo_Header *pseudo_ip,  int pseudo_len);
 
 /**
  * @brief switch the source and destination ports in a tcp header
@@ -168,25 +159,24 @@ TCB *tcp_get_state(TCP_Connection_ID *id, TCP_Server_Instance *states);
  * @brief send reset on a nonexistent connection
  * @param ip_pack the ip packet that we are modying
  * @param tcp_pack is the tcp packet content we are modifying
- * @return true if there is an error
  */
-bool tcp_null_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack);
+void tcp_null_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack);
 
 /**
  * @brief send reset on an existing connection
  * @param ip_pack the ip packet we are modifying
  * @param tcp_pack the tcp packet we are modifying
- * @param tcb the state of the connection we are sending a reset through
+ * @param tcb the state of  the connection we are sending a reset through
  */
 void tcp_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
 
 /**
- * @brief send a SYN or SYN ACK back over an existing connection
+ * @brief send a SYN ACK over a newly created connection
  * @param ip_pack the ip packet we are modifying
  * @param tcp_pack the tcp packet we are modifying
  * @param tcb the state of the connection we are sending a syn through
  */
-void tcp_syn(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
+void tcp_null_syn_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
 
 /**
  * @brief Dispatch the TCP packet to its corresponding function

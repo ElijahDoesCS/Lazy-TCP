@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
     if (verbose) virtual_device_print(&vd);
 
     // Initialize the device to an IP
-    if (tun_init(verbose, &vd) == -1) {
+    if (tun_init(verbose, &vd)) {
         fprintf(stderr, "[ERROR]: Could not bind virtual device to IP %s", vd.ip);
         virtual_device_destroy(vd);
         exit(EXIT_FAILURE);

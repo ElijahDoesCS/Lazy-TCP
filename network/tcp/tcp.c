@@ -19,23 +19,18 @@ bool tcp_compare_id(TCP_Connection_ID *id_a, TCP_Connection_ID *id_b) {
     return true;
 }
 
-bool tcp_update_checksum(TCP_Header *tcp_pack, int tcp_len, 
+void tcp_update_checksum(TCP_Header *tcp_pack, int tcp_len, 
                         TCP_IP_Pseudo_Header *pseudo_ip, int pseudo_len) 
     {
 
     tcp_pack->checksum = 0;
-    char *buffer = (char *) malloc(tcp_len + pseudo_len);
-    if (!buffer) return true;
-
+    
+    char buffer[128];
     memcpy(buffer, pseudo_ip, pseudo_len);
     memcpy(buffer + pseudo_len, tcp_pack, tcp_len);
-
+    
     uint16_t checksum = packet_checksum((void *) buffer, tcp_len + pseudo_len);
     tcp_pack->checksum = checksum;
-
-    free(buffer);
-
-    return false;
 }
 
 void tcp_switch_port(TCP_Header *tcp_pack) {
@@ -105,7 +100,7 @@ TCB *tcp_get_state(TCP_Connection_ID *id, TCP_Server_Instance *states) {
     return found;
 }
 
-bool tcp_null_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack) {
+void tcp_null_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack) {
     int tcp_header_len, ip_header_len;
     int total_len, seg_len;
 
@@ -160,13 +155,51 @@ bool tcp_null_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack) {
     pseudo_ip.proto = IP_TCP_PROTO;
     pseudo_ip.tcp_len = htons(tcp_header_len);
 
-    return tcp_update_checksum(tcp_pack, tcp_header_len, &pseudo_ip, sizeof(TCP_IP_Pseudo_Header));
+    tcp_update_checksum(tcp_pack, tcp_header_len, &pseudo_ip, sizeof(TCP_IP_Pseudo_Header));
 }
 
-void tcp_syn(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
-    
+void tcp_update_state();
 
-    return;
+void tcp_null_syn_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
+
+    // Our recv sequence is their initial sequence num
+    tcb->recv.irs = ntohl(tcp_pack->seq_num);
+    tcb->recv.next = tcb->recv.irs + 1; // Expect ISN + 1
+    tcb->send.window = ntohs(tcp_pack->window);
+    tcb->send.iss = tcp_get_ticks();
+
+    // Next sequence number we'll send
+    tcb->send.next = tcb->send.iss + 1;
+
+    // Nothing acknowledged yet
+    tcb->send.unac = tcb->send.iss;
+
+    // Swap destinations
+    ip_swap_dst(ip_pack);
+    tcp_switch_port(tcp_pack);
+
+    // Set TCP header fields
+    int tcp_header_len = (tcp_pack->data_offset >> 4) * 4;
+    tcp_pack->seq_num = htonl(tcb->send.iss);
+    tcp_pack->ack_num = htonl(tcb->recv.next);
+    tcp_pack->data_offset = (tcp_header_len / 4) << 4;
+    tcp_pack->flags = TCP_SYN | TCP_ACK;
+    tcp_pack->window = htons(tcb->recv.window);
+    tcp_pack->urgent_ptr = 0;
+
+    // Update the IP checksum
+    int ip_header_len = (ip_pack->version_ihl & 0xf) * 4;  
+    ip_pack->len = htons(ip_header_len + tcp_header_len);
+    ip_update_checksum(ip_pack, ip_header_len);
+
+    TCP_IP_Pseudo_Header pseudo;
+    pseudo.src = ip_pack->src;
+    pseudo.dst = ip_pack->dst;
+    pseudo.zero = 0;
+    pseudo.proto = IP_TCP_PROTO;
+    pseudo.tcp_len = htons(tcp_header_len);
+
+    tcp_update_checksum(tcp_pack, tcp_header_len, &pseudo, sizeof(TCP_IP_Pseudo_Header));
 }
 
 // void tcp_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
@@ -201,18 +234,18 @@ int tcp_dispatch(bool verbose,
             printf("We need to initialize a new connection!\n");
 
             TCB *tcb = tcp_init_tcb(&id);
-            
+            tcp_insert_tcb(tcb, states);
+            tcp_null_syn_ack(ip_pack, tcp_pack, tcb);
+
+
             if (tcb == NULL) 
                 return TCP_SILENT;
             if (verbose)
                 print_TCP_Server_Instance(states);
-
-            tcp_insert_tcb(tcb, states);
-            tcp_syn(ip_pack, tcp_pack, tcb);
         }
         else {
             printf("Segment for a connection that doesn't exist!\n");
-            if (tcp_null_rst(ip_pack, tcp_pack)) return TCP_SILENT;
+            tcp_null_rst(ip_pack, tcp_pack);
         }
 
         return 0;
