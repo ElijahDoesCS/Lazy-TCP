@@ -131,7 +131,8 @@ bool tcp_compare_id(TCP_Connection_ID *id_a, TCP_Connection_ID *id_b);
  * @param pseudo_ip the pseudo ip header the prepends the tcp header
  * @param returns true if we couldn't allocate memory for the pseudo packet
  */
-void tcp_update_checksum(TCP_Header *tcp_pack, int tcp_len, TCP_IP_Pseudo_Header *pseudo_ip,  int pseudo_len);
+void tcp_update_checksum(TCP_Header *tcp_pack, int tcp_pack_len, 
+                         TCP_IP_Pseudo_Header *pseudo_ip,  int pseudo_len);
 
 /**
  * @brief switch the source and destination ports in a tcp header
@@ -204,7 +205,7 @@ void tcp_send_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb, char *bo
  * @param tcp_pack the tcp packet of the recieved data
  * @param tcb is the state of the connection on which we are reading
  */
-void tcp_handle_data(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
+int tcp_handle_data(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
 
 // /**
 //  * @brief send a finish sequence immediately after recieving one

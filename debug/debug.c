@@ -153,6 +153,8 @@ void tcp_print(TCP_Header *tcp) {
     printf("Checksum:         0x%04x\n", ntohs(tcp->checksum));
     printf("Urgent Pointer:   %u\n", ntohs(tcp->urgent_ptr));
     printf("------------------\n");
+
+    // Print the data of the tcp header
 }
 
 char *ip_proto_string(uint8_t proto) {
@@ -218,4 +220,19 @@ void icmp_print(ICMP_Header *packet) {
     printf("---------------------------------------------\n");
 }
 
+void packet_debug(IPv4_Header *ip_pack, TCP_Header *tcp_pack, bool inbound) {
+    if (inbound) printf("--- INBOUND PACKET ---\n");
+    else printf("--- OUTBOUND PACKET --- \n");
+
+    ip_print(ip_pack);
+    tcp_print(tcp_pack);
+
+    // Print the data content of the inbound packet
+    int ip_hl = (ip_pack->version_ihl & 0xf) * 4;
+    int d_data = (tcp_pack->data_offset >> 4) * 4;
+    int total_len = ntohs(ip_pack->len);
+
+    printf(" ~ Segment body ~\n");
+    raw_packet_print((char *) ((uint8_t *) tcp_pack + (uint8_t) d_data), total_len - ip_hl - d_data);
+}
 

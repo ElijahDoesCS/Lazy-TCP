@@ -19,7 +19,7 @@ int parse_packet(bool print,
     {
 
     char *packet = raw_packet->bytes;
-    int pack_len = raw_packet->pack_len;
+    // int pack_len = raw_packet->pack_len;
 
     IPv4_Header *ip_pack = (IPv4_Header *) packet;
     int op = packet_deserialize(ip_pack);
@@ -31,10 +31,10 @@ int parse_packet(bool print,
             ICMP_Header *icmp_pack = (ICMP_Header *) ((char *) packet + (4 * ihl));
             icmp_dispatch(ip_pack, icmp_pack); // Dispactch to handle the corresponding type/code
 
-            if (print) {
-                ip_print(ip_pack);    
-                icmp_print(icmp_pack);
-            }
+            // if (print) {
+            //     ip_print(ip_pack);    
+            //     icmp_print(icmp_pack);
+            // }
 
             // Write back to the file descriptor
             write(vd->fd, ip_pack, ntohs(ip_pack->len));
@@ -43,24 +43,16 @@ int parse_packet(bool print,
         
         case IPV4_TCP: // TCP over IPv4
             TCP_Header *tcp_pack = (TCP_Header *) ((char *) packet + (4 * ihl));
-            if (print) {
-                printf("--- INBOUND PACKET ---\n");
-                ip_print(ip_pack);
-                tcp_print(tcp_pack);
-            }
+            if (print) packet_debug(ip_pack, tcp_pack, true);
 
             err = tcp_dispatch(print, ip_pack, tcp_pack, states);
 
             if (err == TCP_FATAL) return 1;
             if (err == TCP_SILENT) return 0;
             
-            // If we aren'treturning before sending
-            if (print) {
-                printf("RESPONSE PACKET\n");
-                ip_print(ip_pack);
-                tcp_print(tcp_pack);
-            }
-
+            // Debug print the packet contents
+            if (print) packet_debug(ip_pack, tcp_pack, false);
+            
             // if (err == TCP_UNREACHABLE) {
             //     // Call ICMP Destination unreachable
             // }

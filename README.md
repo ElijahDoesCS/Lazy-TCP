@@ -33,3 +33,4 @@ sudo python3 ./packet_cooking/gen.py
 - Implement TCP timestamps and timing mechanisms
 - Implement a retransmission queue
 - Not handling options
+- Have to update state on empty ACKs

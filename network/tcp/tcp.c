@@ -20,17 +20,16 @@ bool tcp_compare_id(TCP_Connection_ID *id_a, TCP_Connection_ID *id_b) {
     return true;
 }
 
-void tcp_update_checksum(TCP_Header *tcp_pack, int tcp_len, 
+void tcp_update_checksum(TCP_Header *tcp_pack, int tcp_pack_len, 
                         TCP_IP_Pseudo_Header *pseudo_ip, int pseudo_len) 
     {
 
     tcp_pack->checksum = 0;
-    
-    char buffer[128];
+    char buffer[tcp_pack_len + pseudo_len + 1];
     memcpy(buffer, pseudo_ip, pseudo_len);
-    memcpy(buffer + pseudo_len, tcp_pack, tcp_len);
+    memcpy(buffer + pseudo_len, tcp_pack, tcp_pack_len);
     
-    uint16_t checksum = packet_checksum((void *) buffer, tcp_len + pseudo_len);
+    uint16_t checksum = packet_checksum((void *) buffer, tcp_pack_len + pseudo_len);
     tcp_pack->checksum = checksum;
 }
 
@@ -249,10 +248,8 @@ void tcp_send_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb, char *bo
 
     if (body != NULL && body_len > 0) {
         tcp_pack->flags = TCP_PSH | TCP_ACK;
-        printf("This is the packet  we are sending of length %d below...\n%s\n", body_len, body);
         uint8_t *payload = ((uint8_t *) tcp_pack) + tcp_hl;
-        // POTENTIAL BOF
-        memcpy(payload, body, body_len);
+        memcpy(payload, body, body_len); // Payload is up to 1500 bytes - ip & tcp hl (bof vuln)
         ip_pack->len = htons(ip_hl + tcp_hl + body_len);
         tcb->send.next += body_len;
     }
@@ -269,24 +266,25 @@ void tcp_send_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb, char *bo
     pseudo.zero = 0;
     pseudo.proto = IP_TCP_PROTO;
     pseudo.tcp_len = htons(tcp_hl + body_len);
-    tcp_update_checksum(tcp_pack, tcp_hl, &pseudo, sizeof(pseudo));
+    tcp_update_checksum(tcp_pack, tcp_hl + body_len, &pseudo, sizeof(pseudo));
 }
 
-void tcp_handle_data(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
+int tcp_handle_data(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
     int ip_hl = (ip_pack->version_ihl & 0xf) * 4;
     int tcp_hl = (tcp_pack->data_offset >> 4) * 4;
     int data_len = ntohs(ip_pack->len) - ip_hl - tcp_hl;
+    if (data_len <= 0) return TCP_SILENT;
+
     char *http_response = NULL;
     int message_len = 0;
 
-    if (data_len > 0) {
-        uint8_t *data = ((uint8_t *) ip_pack) + ip_hl + tcp_hl;
-        http_response = http_handle_request((char *) data, data_len, &message_len);
-        tcb->recv.next += data_len;
-    }
-
+    uint8_t *data = ((uint8_t *) ip_pack) + ip_hl + tcp_hl;
+    http_response = http_handle_request((char *) data, data_len, &message_len);
+    tcb->recv.next += data_len;
     tcp_send_ack(ip_pack, tcp_pack, tcb, http_response, message_len);
     free(http_response);
+    
+    return 0;
 }
 
 // void tcp_send_fin(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
@@ -324,8 +322,11 @@ int tcp_dispatch(bool verbose,
 
             if (tcb == NULL) 
                 return TCP_SILENT;
-            if (verbose)
+            
+            if (verbose) {
+                printf("--- CURRENT STATE --- \n");
                 print_TCP_Server_Instance(states);
+            }
         }
         else {
             tcp_null_rst(ip_pack, tcp_pack);
@@ -347,7 +348,11 @@ int tcp_dispatch(bool verbose,
                 tcp_null_syn_ack(ip_pack, tcp_pack, con_state);
             }
             else if (ack && !syn) { // Final ack of handshake
-                printf("Completing final ack of handshake\n");
+                if (verbose) {
+                    printf("SESSION INITIALIZED FOR CONNECTION:\n   ");
+                    print_TCP_Connection_ID(&(con_state->id));
+                }
+
                 uint32_t ack_num = ntohl(tcp_pack->ack_num);
                 
                 // If it's a valid ACK advance the state
@@ -373,14 +378,11 @@ int tcp_dispatch(bool verbose,
 
                 // Send our fin when we are done sending our data
                 // tcp_send_fin(ip_pack, tcp_pack, con_state);
+                return 0;
             }
             else {
-                tcp_handle_data(ip_pack, tcp_pack, con_state);
+                return tcp_handle_data(ip_pack, tcp_pack, con_state);
             }
-            
-            // Send the data
-            return 0;
-
         case TCP_CLOSE_WAIT:
             // We have acknowledged their fin, sent our fin, and are waiting for their ack
             return TCP_SILENT;

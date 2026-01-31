@@ -23,5 +23,6 @@ char *ip_proto_string(uint8_t proto);
 void ip_print(IPv4_Header *ip_pack);
 void icmp_print(ICMP_Header *packet);
 void tcp_print_buf(char *buffer, int buf_len);
+void packet_debug(IPv4_Header *ip_pack, TCP_Header *tcp_pack, bool inbound);
 
 #endif
