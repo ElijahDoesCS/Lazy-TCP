@@ -237,7 +237,6 @@ int tcp_dispatch(bool verbose,
             tcp_insert_tcb(tcb, states);
             tcp_null_syn_ack(ip_pack, tcp_pack, tcb);
 
-
             if (tcb == NULL) 
                 return TCP_SILENT;
             if (verbose)
