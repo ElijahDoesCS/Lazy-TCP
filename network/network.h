@@ -10,6 +10,8 @@
 # define IP_TCP_PROTO 6
 # define IP_ICMP_PROTO 1
 
+# define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 typedef struct IPv4_Header IPv4_Header;
 typedef struct ICMP_Header ICMP_Header;
 typedef struct TCP_Header TCP_Header;
@@ -54,6 +56,8 @@ struct TCP_Header {
     uint16_t window;       // The maximum acceptable send beyond next
     uint16_t checksum;     // Verify header integrity, computed w/ ip
     uint16_t urgent_ptr;   // Byte ptr to urgent data in send queue
+    // uint16_t options
+
     // Options
 } __attribute__((packed));
 

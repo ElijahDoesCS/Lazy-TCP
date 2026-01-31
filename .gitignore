@@ -6,6 +6,7 @@ obj_files/
 input/
 tcp_less
 dump/
+env/
 
 # Logs
 wireshark_logs/

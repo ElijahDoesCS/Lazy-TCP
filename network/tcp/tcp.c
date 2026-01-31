@@ -3,7 +3,8 @@
 uint32_t tcp_get_ticks() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (uint32_t)((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
+    return (tv.tv_sec * 1000000 + tv.tv_usec) + rand();
+
 }
 
 void tcp_init_server_instance(TCP_Server_Instance *states) {
@@ -63,6 +64,7 @@ TCB *tcp_init_tcb(TCP_Connection_ID *id) {
     
     // Receive buffer
     new->recv_size = 0;
+    new->recv_consumed = 0;
     
     // Linked list
     new->next = NULL;
@@ -158,10 +160,7 @@ void tcp_null_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack) {
     tcp_update_checksum(tcp_pack, tcp_header_len, &pseudo_ip, sizeof(TCP_IP_Pseudo_Header));
 }
 
-void tcp_update_state();
-
 void tcp_null_syn_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
-
     // Our recv sequence is their initial sequence num
     tcb->recv.irs = ntohl(tcp_pack->seq_num);
     tcb->recv.next = tcb->recv.irs + 1; // Expect ISN + 1
@@ -202,12 +201,101 @@ void tcp_null_syn_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
     tcp_update_checksum(tcp_pack, tcp_header_len, &pseudo, sizeof(TCP_IP_Pseudo_Header));
 }
 
-// void tcp_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
+void tcp_remove_connection(TCP_Server_Instance *states, TCB *tcb) {
+    if (states->head == tcb) {
+        states->head = states->head->next;
+    }
+    else {
+        TCB *prev = states->head;
+        while (prev && prev->next != tcb) {
+            prev = prev->next;
+        }
+        if (prev) {
+            prev->next = tcb->next;
+        }
+    }
+
+    free(tcb);
+    states->size--;
+}
+
+bool tcp_got_rst(TCP_Header *tcp_pack, TCB *tcb, TCP_Server_Instance *states) {
+    uint32_t rst_seq = tcp_pack->seq_num;
+
+    // User requested to remove the connection
+    if (SEQ_GEQ(rst_seq, tcb->recv.next) && 
+        SEQ_LT(rst_seq, tcb->recv.next + tcb->recv.window)) {
+        tcp_remove_connection(states, tcb);
+    }
+    else return true;
+
+    return false;
+}
+
+void tcp_send_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb, char *body, int body_len) {
+    // Modify the ip packet contents
+    ip_swap_dst(ip_pack);
+    tcp_switch_port(tcp_pack);
+
+    int ip_hl = (ip_pack->version_ihl & 0xf) * 4;
+    int tcp_hl = (tcp_pack->data_offset >> 4) * 4;
+
+    // Build the ACK
+    tcp_pack->seq_num = htonl(tcb->send.next);
+    tcp_pack->ack_num = htonl(tcb->recv.next);
+    tcp_pack->data_offset = (tcp_hl / 4) << 4;
+    tcp_pack->window = htons(tcb->recv.window);
+    tcp_pack->urgent_ptr = 0;
+
+    if (body != NULL && body_len > 0) {
+        tcp_pack->flags = TCP_PSH | TCP_ACK;
+        printf("This is the packet  we are sending of length %d below...\n%s\n", body_len, body);
+        uint8_t *payload = ((uint8_t *) tcp_pack) + tcp_hl;
+        // POTENTIAL BOF
+        memcpy(payload, body, body_len);
+        ip_pack->len = htons(ip_hl + tcp_hl + body_len);
+        tcb->send.next += body_len;
+    }
+    else {
+        tcp_pack->flags = TCP_ACK;
+        ip_pack->len = htons(ip_hl + tcp_hl);
+    }
+
+    ip_update_checksum(ip_pack, ip_hl);
+
+    TCP_IP_Pseudo_Header pseudo;
+    pseudo.src = ip_pack->src;
+    pseudo.dst = ip_pack->dst;
+    pseudo.zero = 0;
+    pseudo.proto = IP_TCP_PROTO;
+    pseudo.tcp_len = htons(tcp_hl + body_len);
+    tcp_update_checksum(tcp_pack, tcp_hl, &pseudo, sizeof(pseudo));
+}
+
+void tcp_handle_data(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
+    int ip_hl = (ip_pack->version_ihl & 0xf) * 4;
+    int tcp_hl = (tcp_pack->data_offset >> 4) * 4;
+    int data_len = ntohs(ip_pack->len) - ip_hl - tcp_hl;
+    char *http_response = NULL;
+    int message_len = 0;
+
+    if (data_len > 0) {
+        uint8_t *data = ((uint8_t *) ip_pack) + ip_hl + tcp_hl;
+        http_response = http_handle_request((char *) data, data_len, &message_len);
+        tcb->recv.next += data_len;
+    }
+
+    tcp_send_ack(ip_pack, tcp_pack, tcb, http_response, message_len);
+    free(http_response);
+}
+
+// void tcp_send_fin(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb) {
+//     printf("We aren't doing anything to finish right now buddy!\n");
 //     return;
 // }
 
 int tcp_dispatch(bool verbose, 
-                IPv4_Header *ip_pack, TCP_Header *tcp_pack, 
+                 IPv4_Header *ip_pack, TCP_Header *tcp_pack, 
                  TCP_Server_Instance *states) 
     {   
     
@@ -221,18 +309,15 @@ int tcp_dispatch(bool verbose,
     uint8_t flags = tcp_pack->flags;
     bool syn = flags & TCP_SYN;
     bool ack = flags & TCP_ACK;
-    // bool fin = flags & TCP_FIN; // Going to be handled when we have established
+    bool fin = flags & TCP_FIN; // Going to be handled when we have established
     bool rst = flags & TCP_RST;
 
     TCB *con_state = tcp_get_state(&id, states);
     if (con_state == NULL) {
         if (rst) {
-            printf("Got a reset on a null connection!\n");
             return TCP_SILENT;
         }
         if (syn && !ack) { 
-            printf("We need to initialize a new connection!\n");
-
             TCB *tcb = tcp_init_tcb(&id);
             tcp_insert_tcb(tcb, states);
             tcp_null_syn_ack(ip_pack, tcp_pack, tcb);
@@ -243,15 +328,65 @@ int tcp_dispatch(bool verbose,
                 print_TCP_Server_Instance(states);
         }
         else {
-            printf("Segment for a connection that doesn't exist!\n");
             tcp_null_rst(ip_pack, tcp_pack);
         }
 
         return 0;
     }
-    
-    // The connection already exists, implementing later
 
+    if (rst) {
+        if (!tcp_got_rst(tcp_pack, con_state, states))
+            printf("[ERROR]: Recieved invalid reset request, may or may not be malicioius\n");
+        
+        return TCP_SILENT;
+    }
+    
+    switch (con_state->state) {
+        case TCP_SYN_RECEIVED:
+            if (syn && !ack) {
+                tcp_null_syn_ack(ip_pack, tcp_pack, con_state);
+            }
+            else if (ack && !syn) { // Final ack of handshake
+                printf("Completing final ack of handshake\n");
+                uint32_t ack_num = ntohl(tcp_pack->ack_num);
+                
+                // If it's a valid ACK advance the state
+                if (ack_num == (uint32_t) con_state->send.next) {
+                    con_state->state = TCP_ESTABLISHED;
+                    con_state->send.unac = ack_num;
+                }
+                else {
+                    printf("[ERROR]: Recieved invalid connection acknowledgement. Failed handshake\n");
+                }
+            }
+            else {
+                printf("[DEBUG]: Unexpected flag in SYN_RECIEVED state\n");
+            }
+
+            return TCP_SILENT;
+
+        case TCP_ESTABLISHED:
+            if (fin) { // The client is closing their side of the connection
+                con_state->recv.next = ntohl(tcp_pack->seq_num) + 1;
+                tcp_send_ack(ip_pack, tcp_pack, con_state, NULL, 0);
+                con_state->state = TCP_CLOSE_WAIT;
+
+                // Send our fin when we are done sending our data
+                // tcp_send_fin(ip_pack, tcp_pack, con_state);
+            }
+            else {
+                tcp_handle_data(ip_pack, tcp_pack, con_state);
+            }
+            
+            // Send the data
+            return 0;
+
+        case TCP_CLOSE_WAIT:
+            // We have acknowledged their fin, sent our fin, and are waiting for their ack
+            return TCP_SILENT;
+        default:
+            return TCP_SILENT;
+    }
 
     return 0;
 }

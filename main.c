@@ -24,7 +24,7 @@ int parse_packet(bool print,
     IPv4_Header *ip_pack = (IPv4_Header *) packet;
     int op = packet_deserialize(ip_pack);
     int ihl = ip_pack->version_ihl & 0xf, err;
-    if (print) raw_packet_print(packet, pack_len);
+    // if (print) raw_packet_print(packet, pack_len);
     
     switch (op) {   
         case IPV4_ICMP: // ICMP over IPv4
@@ -44,7 +44,7 @@ int parse_packet(bool print,
         case IPV4_TCP: // TCP over IPv4
             TCP_Header *tcp_pack = (TCP_Header *) ((char *) packet + (4 * ihl));
             if (print) {
-                printf("ORIGINAL PACKET\n");
+                printf("--- INBOUND PACKET ---\n");
                 ip_print(ip_pack);
                 tcp_print(tcp_pack);
             }

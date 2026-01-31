@@ -15,6 +15,11 @@ const char* TCP_State_to_string(TCP_State state) {
 
 // Print a TCP connection ID
 void print_TCP_Connection_ID(TCP_Connection_ID *id) {
+    char src_str[128];
+    char dst_str[128];
+    inet_ntop(AF_INET, &(id->src_ip), src_str, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET, &(id->dst_ip), dst_str, INET_ADDRSTRLEN);
+
     printf("Connection: %d:%d -> %d:%d\n",
            id->src_ip, id->src_port, id->dst_ip, id->dst_port);
 }
@@ -34,6 +39,17 @@ void print_TCP_Recieve_State(TCP_Recieve_State *recv) {
     printf("  next: %d\n", recv->next);
     printf("  window: %d\n", recv->window);
     printf("  irs: %d\n", recv->irs);
+}
+
+void tcp_print_buf(char *buffer, int buf_len) {
+    printf("RECIEVED BYTES FROM CLIENT\n");
+    for (int i = 0; i < buf_len; i++) {
+        if (buffer[i] >= 32 && buffer[i] <= 126) {
+            printf("%c ", buffer[i]);
+        } else {
+            printf("[%02x] ", buffer[i]);
+        }
+    }
 }
 
 // Print a single TCB
@@ -124,7 +140,7 @@ void tcp_print(TCP_Header *tcp) {
     printf("Header Length:    %d bytes\n", header_len);
     
     // Parsing Flags
-    printf("Flags:            0x%02x (", tcp->flags);
+    printf("Flags:            0x%02x ( ", tcp->flags);
     if (tcp->flags & 0x20) printf("URG ");
     if (tcp->flags & 0x10) printf("ACK ");
     if (tcp->flags & 0x08) printf("PSH ");

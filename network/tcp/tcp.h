@@ -11,6 +11,7 @@ typedef struct TCP_IP_Pseudo_Header TCP_IP_Pseudo_Header;
 
 typedef struct TCB TCB; // Holds per connection state
 
+#include "../http/http.h"
 #include "../network.h"
 #include "../ip/ip.h"
 #include "../../debug/debug.h"
@@ -19,11 +20,15 @@ typedef struct TCB TCB; // Holds per connection state
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/param.h>
 
 enum TCP_State {
     TCP_SYN_RECEIVED,  // Got SYN, waiting for final ACK of handshake
     TCP_ESTABLISHED,   // Connected, can exchange data
     TCP_CLOSE_WAIT,    // They closed, we need to close too
+    // TCP_CLOSING,       // For simultaneous close
+    // TCP_LAST_ACK,      // We sent FIN, waiting for their ACK
+    // TCP_TIME_WAIT      // Wait to minutes after they close
 };
 
 struct TCP_Connection_ID {
@@ -57,6 +62,7 @@ struct TCB {
     // Recieve byte buffer
     uint8_t recv_buffer[8192];
     int recv_size;
+    int recv_consumed;
 
     // struct timeval retransmit_timer;
 
@@ -156,19 +162,11 @@ void tcb_insert_tcb(TCB *tcb, TCP_Server_Instance *states);
 TCB *tcp_get_state(TCP_Connection_ID *id, TCP_Server_Instance *states);
 
 /**
- * @brief send reset on a nonexistent connection
+ * @brief send reset for a nonexistent connection
  * @param ip_pack the ip packet that we are modying
  * @param tcp_pack is the tcp packet content we are modifying
  */
 void tcp_null_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack);
-
-/**
- * @brief send reset on an existing connection
- * @param ip_pack the ip packet we are modifying
- * @param tcp_pack the tcp packet we are modifying
- * @param tcb the state of  the connection we are sending a reset through
- */
-void tcp_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
 
 /**
  * @brief send a SYN ACK over a newly created connection
@@ -177,6 +175,44 @@ void tcp_rst(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
  * @param tcb the state of the connection we are sending a syn through
  */
 void tcp_null_syn_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
+
+/**
+ * @brief remove a connection from the list of TCBs
+ * @param states the list of states from which we are removing
+ * @param tcb is the tcb we are removing from the list
+ */
+void tcp_remove_connection(TCP_Server_Instance *states, TCB *tcb);
+
+/**
+ * @brief send reset on an existing connection
+ * @param tcp_pack the tcp packet we refer to drop the connection
+ * @param tcb the state of  the connection that recieved a reset
+ */
+bool tcp_got_rst(TCP_Header *tcp_pack, TCB *tcb, TCP_Server_Instance *states);
+
+/**
+ * @brief send an acknowledgement to the the client's fin message
+ * @param ip_pack is the ip packet we are modifying
+ * @param tcp_pack the tcp packet header we are modifying
+ * @param tcb is the state of the connection we are acting on
+ */
+void tcp_send_ack(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb, char *body, int body_len);
+
+/**
+ * @brief get the data off the connection and advance the recieve state
+ * @param ip_pack the ip packet of the received data
+ * @param tcp_pack the tcp packet of the recieved data
+ * @param tcb is the state of the connection on which we are reading
+ */
+void tcp_handle_data(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
+
+// /**
+//  * @brief send a finish sequence immediately after recieving one
+//  * @param ip_pack the ip pack we are modifying
+//  * @param tcp_pack is the tcp packet we are modifying
+//  * @param tcb is the state of the connection we are finishing
+//  */
+// void tcp_send_fin(IPv4_Header *ip_pack, TCP_Header *tcp_pack, TCB *tcb);
 
 /**
  * @brief Dispatch the TCP packet to its corresponding function

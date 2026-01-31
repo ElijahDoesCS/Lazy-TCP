@@ -10,9 +10,10 @@ NETWORK  = network/network.c
 ICMP     = network/icmp/icmp.c
 IP       = network/ip/ip.c
 TCP		 = network/tcp/tcp.c
+HTTP 	 = network/http/http.c
 DEBUG 	 = debug/debug.c
 
-SRCS = $(ENTRY) $(V_DEVICE) $(T_POOL) $(NETWORK) $(ICMP) $(IP) $(TCP) $(DEBUG)
+SRCS = $(ENTRY) $(V_DEVICE) $(T_POOL) $(NETWORK) $(ICMP) $(IP) $(TCP) $(DEBUG) $(HTTP)
 
 OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
 
