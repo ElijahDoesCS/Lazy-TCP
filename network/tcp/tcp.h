@@ -26,9 +26,9 @@ enum TCP_State {
     TCP_SYN_RECEIVED,  // Got SYN, waiting for final ACK of handshake
     TCP_ESTABLISHED,   // Connected, can exchange data
     TCP_CLOSE_WAIT,    // They closed, we need to close too
-    // TCP_CLOSING,       // For simultaneous close
-    // TCP_LAST_ACK,      // We sent FIN, waiting for their ACK
-    // TCP_TIME_WAIT      // Wait to minutes after they close
+    TCP_CLOSING,       // For simultaneous close
+    TCP_LAST_ACK,      // We sent FIN, waiting for their ACK
+    TCP_TIME_WAIT      // Wait n minutes after they close
 };
 
 struct TCP_Connection_ID {

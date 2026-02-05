@@ -386,6 +386,12 @@ int tcp_dispatch(bool verbose,
         case TCP_CLOSE_WAIT:
             // We have acknowledged their fin, sent our fin, and are waiting for their ack
             return TCP_SILENT;
+        case TCP_CLOSING:
+            return TCP_SILENT;
+        case TCP_LAST_ACK:
+            return TCP_SILENT;
+        case TCP_TIME_WAIT:
+            return TCP_SILENT;
         default:
             return TCP_SILENT;
     }

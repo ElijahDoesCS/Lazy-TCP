@@ -1,7 +1,6 @@
 # Goals
 - Serve web content through from the TUN device
 - Implement TCP state handling
-- Thread TCP state advancements
 - Modify makefile to add CAP_NET_ADMIN to output binary
 - Cook up some test TCP packets on scapy
 - Create an analog interface on verilog if ur trynna get crazy
