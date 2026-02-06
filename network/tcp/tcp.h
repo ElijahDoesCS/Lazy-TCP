@@ -60,7 +60,7 @@ struct TCB {
     TCP_Recieve_State recv;
 
     // Recieve byte buffer
-    uint8_t recv_buffer[8192];
+    uint8_t recv_buffer[16384];
     int recv_size;
     int recv_consumed;
 

@@ -19,8 +19,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-extern bool g_verbose;
-
 uint16_t checksum(uint8_t *buf, int len);
 
 /**

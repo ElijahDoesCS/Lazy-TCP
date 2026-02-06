@@ -49,10 +49,9 @@ struct Tun {
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
-extern bool g_verbose;
-
 int tun_write(Tun *tun, uint8_t *buf, int len);
 int tun_read(Tun *tun, uint8_t *buf, int len);
+void tun_print(Tun *tun);
 
 /**
  * Bring an interface up using Netlink.
@@ -88,7 +87,6 @@ int tun_alloc(char *name);
  * 
  * @param name    Device name (max 16 bytes)
  * @param ip      IP address for the device
- * @param verbose Print status messages to stdout
  * @return Tun structure on success, NULL on failure (check stderr).
  */
 Tun *tun_init(char *name, char *ip);

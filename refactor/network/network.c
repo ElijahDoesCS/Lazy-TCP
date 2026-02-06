@@ -1,6 +1,6 @@
 #include "./network.h"
-#include "../debug/debug.h"
 #include "./icmp/icmp.h"
+#include "./tcp/tcp.h"
 #include "./ip.h"
 
 uint16_t checksum(uint8_t *buf, int len) {
@@ -25,16 +25,8 @@ uint16_t checksum(uint8_t *buf, int len) {
 int net_demux(int fd, uint8_t *buf, int len) {
     IPv4 *ip = (IPv4 *) buf;
 
-    if (g_verbose) 
-        raw_print(buf, len);
-
     if (!ip_validate(ip, len))
         return 0;
-    
-    if (g_verbose) {
-        printf("--- INCOMING IPv4 PACKET ---\n");
-        ip_print(ip);
-    }
 
     int proto = ip->proto, ihl = (ip->version_ihl & 0xf) * 4;
 
@@ -42,7 +34,7 @@ int net_demux(int fd, uint8_t *buf, int len) {
         case PROTO_ICMP:
             return icmp_dispatch(buf, len, ihl);
         case PROTO_TCP:
-            // Do tcp stuff
+            // return tcp_dispatch(buf, len, ihl);
             return 0;
         default:
             // Echo back or send proto unreachable

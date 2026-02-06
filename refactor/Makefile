@@ -11,9 +11,9 @@ ICMP     = network/icmp/icmp.c
 IP       = network/ip.c
 # TCP	   = network/tcp/tcp.c
 # HTTP 	   = network/http/http.c
-DEBUG 	 = debug/debug.c
+# DEBUG 	 = debug/debug.c
 
-SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(DEBUG) $(IP)
+SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) # $(DEBUG)
 
 OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
 

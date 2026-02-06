@@ -27,8 +27,6 @@ typedef struct ICMP ICMP;
 #include <stdbool.h>
 #include <string.h>
 
-extern bool g_verbose;
-
 struct ICMP {
     uint8_t  type;         // Request or response
     uint8_t  code;         // The type of ICMP message

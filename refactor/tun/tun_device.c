@@ -1,5 +1,4 @@
 #include "./tun_device.h"
-#include "../debug/debug.h"
 
 int tun_read(Tun *tun, uint8_t *buf, int len) {
     return read(tun->fd, buf, len);
@@ -164,9 +163,6 @@ Tun *tun_init(char *name, char *ip) {
         tun_destroy(tun);
         return NULL;
     }
-
-    if (g_verbose)
-        tun_print(tun);
 
     return tun;
 }

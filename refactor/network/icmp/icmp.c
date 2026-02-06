@@ -1,7 +1,6 @@
 #include "./icmp.h"
 #include "../ip.h"
 #include "../network.h"
-#include "../../debug/debug.h"
 
 void icmp_checksum(ICMP *icmp, int len) {
     uint8_t *buf = (uint8_t *) icmp;
@@ -56,12 +55,6 @@ int icmp_dest_unreachable(uint8_t *buf, int len, int offset) {
     // Update the checksum
     icmp_checksum(icmp, sizeof(ICMP) + icmp_pl_len);
 
-    if (g_verbose) {
-        printf("--- OUTGOING PACKET ---\n");
-        ip_print(ip);
-        icmp_print(icmp);
-    }
-
     return ip_len;
 }
 
@@ -79,12 +72,6 @@ int icmp_echo_reply(uint8_t *buf, int len, int offset) {
     ip_swap_dst(ip);
     ip_checksum(ip);
 
-    if (g_verbose) {
-        printf("--- OUTGOING PACKET ---\n");
-        ip_print(ip);
-        icmp_print(icmp);
-    }
-
     return len;
 }
 
@@ -93,11 +80,6 @@ int icmp_dispatch(uint8_t *buf, int len, int offset) {
 
     if (!icmp_validate(icmp, len - offset))
         return 0;
-    
-    if (g_verbose) {
-        printf("--- INCOMING ICMP PACKET ---\n");
-        icmp_print(icmp);
-    }
 
     if (icmp->type == ICMP_ECHO)
         return icmp_echo_reply(buf, len, offset);
