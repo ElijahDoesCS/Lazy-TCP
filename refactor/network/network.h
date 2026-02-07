@@ -26,7 +26,6 @@ uint16_t checksum(uint8_t *buf, int len);
  * @param fd      File descriptor of the TUN device (for direct writes)
  * @param buf     Packet buffer, modified in place if a response is built
  * @param len     Length of the incoming packet in bytes
- * @param verbose Debug print option
  * @return        Size of response packet in buf, or 0 if no response / already written
  */
 int net_demux(int fd, uint8_t *buf, int len);

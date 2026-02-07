@@ -9,11 +9,13 @@ TUN 	 = tun/tun_device.c
 NETWORK  = network/network.c
 ICMP     = network/icmp/icmp.c
 IP       = network/ip.c
+LOG 	 = log/log.c
 # TCP	   = network/tcp/tcp.c
 # HTTP 	   = network/http/http.c
-# DEBUG 	 = debug/debug.c
+# DEBUG    = debug/debug.c
 
-SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) # $(DEBUG)
+
+SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG)
 
 OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
 
@@ -42,5 +44,6 @@ uncap:
 
 clean:
 	rm -rf $(OBJ_DIR) $(TARGET)
+	
 
 .PHONY: all clean

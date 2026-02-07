@@ -1,52 +1,53 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 
 // User libraries
 #include "./tun/tun_device.h"
 #include "./network/network.h"
 #include "./network/tcp/tcp.h"
+#include "./network/ip.h"
+#include "./log/log.h"
 
-// Return a pipe to a packet logging script
-static int log_init() {
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
-        fprintf(stderr, "[ERROR]: Could not initialize pipe ~ %s\n", strerror(errno));
-        return -1;
+static volatile sig_atomic_t g_shutdown = 0;
+
+static void server_shutdown(int sig) {
+    (void)sig;
+    g_shutdown = 1;
+}
+
+void server_run(uint8_t *tu, int mtu, Tun *tun, int log_fd) {
+    int nread, log = (log_fd > 0);
+
+    while (!g_shutdown) {
+        nread = tun_read(tun, tu, mtu);
+        if (nread > 0) {
+            if (log) {
+                Event event = {
+                    .dir = 1,
+                    .timestamp_ns =  
+                };
+                
+            }
+
+            int nwrite = net_demux(tun->fd, tu, nread);
+            if (nwrite > 0) {
+                tun_write(tun, tu, nwrite);
+
+                if (log) {
+
+                }
+            }
+        }
+
     }
 
-    int readfd = pipefd[0], writefd = pipefd[1];
-
-    pid_t pid = fork();
-    if (pid == -1) {
-        fprintf(stderr, "[ERROR]: Could not fork piping process ~ %s\n", strerror(errno));
-        close(readfd);
-        close(writefd);
-        return -1;
-    }
-
-    // Child process
-    if (pid == 0) {
-        close(writefd);
-
-        // Redirect py stdin to read pipe
-        dup2(readfd, STDIN_FILENO);
-        close(readfd);
-
-        execl("/usr/bin/python3", "python3", "./log.py", NULL);
-
-        close(readfd);
-        close(writefd);
-        exit(EXIT_FAILURE);
-    }
-
-    // Parent process
-    close(readfd); 
-
-    return writefd;
 }
 
 int main(int argc, char **argv) {
@@ -75,8 +76,17 @@ int main(int argc, char **argv) {
     if (tun == NULL) 
         exit(EXIT_FAILURE);
     
-    // Initialize log pipe on user request
-    int log_fd;
+    // Initialize debug
+    int log_fd = -1;
+    if (verbose) 
+        log_fd = log_init();
+    
+    if (verbose && log_fd == -1) {
+        fprintf(stderr, "[ERROR]: Could not initialize log device ~ %s\n", strerror(errno));
+        tun_destroy(tun);
+        exit(EXIT_FAILURE);
+    }
+
     if (verbose) {
         printf(
             "TUN device:\n"
@@ -87,33 +97,20 @@ int main(int argc, char **argv) {
             tun->ip,
             tun->fd
         );
-
-        log_fd = log_init();
-        if (log_fd < 0) {
-            fprintf(stderr, "[ERROR]: Failed to initialize log pipe\n");
-            tun_destroy(tun);
-            exit(EXIT_FAILURE);
-        }
-
-        // Add SIGPIPE signal handler
-        // When we write check 
     }
+
+    // Initialize resource deallocation handler
+    struct sigaction sa_usr = {0};
+    sa_usr.sa_handler = server_shutdown;
+    sigemptyset(&sa_usr.sa_mask);
+    sa_usr.sa_flags = SA_RESTART;
+    sigaction(SIGUSR1, &sa_usr, NULL);
 
     uint8_t buf[MTU_SIZE + 1] = {'\0'};
-    int nread;
+    server_run(buf, MTU_SIZE, tun, log_fd);    
 
-    // Create an event structure and pass it to the tun function
-
-
-    while (1) {
-        nread = tun_read(tun, buf, MTU_SIZE);
-        if (nread > 0) {
-            int nwrite = net_demux(tun->fd, buf, nread);
-            if (nwrite > 0) {
-                tun_write(tun, buf, nwrite);
-            }
-        }
-    }
-
+    if (log_fd > 0)
+        close(log_fd);    
+    // tcb_free
     tun_destroy(tun);
 }
