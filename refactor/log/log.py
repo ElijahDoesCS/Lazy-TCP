@@ -48,7 +48,6 @@ def display_event(event_num, event_data):
               f"{pkt.src} → {pkt.dst} | "
               f"Protocol: {Color.YELLOW}{pkt.payload.name if pkt.payload else 'None'}{Color.RESET}")
         
-        # Show protocol-specific info
         if ICMP in pkt:
             print(f"{Color.BOLD}ICMP:{Color.RESET} Type {pkt[ICMP].type} | Code {pkt[ICMP].code}")
         elif ICMPv6ND_RS in pkt:
@@ -64,8 +63,7 @@ def display_event(event_num, event_data):
             print(f"{Color.BOLD}TCP:{Color.RESET} "
                   f"Port {pkt[TCP].sport} → {pkt[TCP].dport} | "
                   f"Flags: {Color.YELLOW}{flags}{Color.RESET}")
-        
-        # Optional: show packet summary
+            
         print(f"{Color.GRAY}{pkt.summary()}{Color.RESET}")
         
     except Exception as e:
