@@ -1,21 +1,27 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -g
+CFLAGS = -Wall -Wextra -g # -Wconversion -Wsign-conversion
 TARGET = tcp_less
 OBJ_DIR = obj_files
 
 ENTRY    = main.c
 TUN 	 = tun/tun_device.c
-# T_POOL   = thread_pool/thread_pool.c
 NETWORK  = network/network.c
 ICMP     = network/icmp/icmp.c
 IP       = network/ip.c
 LOG 	 = log/log.c
+FIFO_DIR = ./env/fifo_end.txt
+FIFO	 = $(shell cat $(FIFO_DIR))
+
+# Degraded or unimplemented
+# T_POOL   = thread_pool/thread_pool.c
 # TCP	   = network/tcp/tcp.c
+TCP_DISP   = network/tcp/tcp.c
 # HTTP 	   = network/http/http.c
 # DEBUG    = debug/debug.c
 
 
-SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG)
+
+SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG) $(TCP_DISP)
 
 OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
 
@@ -44,6 +50,7 @@ uncap:
 
 clean:
 	rm -rf $(OBJ_DIR) $(TARGET)
+	rm $(FIFO)
 	
 
 .PHONY: all clean

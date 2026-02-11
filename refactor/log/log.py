@@ -1,32 +1,98 @@
-# Read from the file descriptor that describes events
-#!/usr/bin/env python3
+from scapy.layers.inet import IP, ICMP, TCP, UDP
+from scapy.layers.inet6 import IPv6, ICMPv6ND_RS, ICMPv6ND_RA, ICMPv6ND_NS, ICMPv6ND_NA
+import struct
+import os
 import sys
+from datetime import datetime
+
+MTU_SIZE = 1500
+
+class Color:
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    GRAY = '\033[90m'
+
+def close(msg):
+    print(f"\n\n{Color.YELLOW}[LOG]: Closing debugger...{Color.RESET}\n")
+    sys.exit(msg)
+
+def display_event(event_num, event_data):
+    try:
+        direction = event_data[0]
+        timestamp_ns = struct.unpack('=Q', event_data[1:9])[0]
+        tu_len = struct.unpack('=H', event_data[9:11])[0]
+        if (tu_len == 0): 
+            close("Server detached (Host sent shutdown)")
+
+        packet_bytes = bytes(event_data[11:11+tu_len])
+        pkt = IP(packet_bytes) if packet_bytes[0] >> 4 == 4 else IPv6(packet_bytes)
+        
+        dt = datetime.fromtimestamp(timestamp_ns / 1_000_000_000)
+        time_str = dt.strftime('%H:%M:%S.%f')[:-3]
+        
+        dir_color, arrow, dir_text = (Color.GREEN, "←", "RECV") if direction == 1 else (Color.BLUE, "→", "SEND")
+        
+        print(f"\n{Color.BOLD}{Color.CYAN}{'='*80}{Color.RESET}")
+        print(f"{Color.BOLD}Event #{event_num}{Color.RESET} | "
+              f"{Color.GRAY}{time_str}{Color.RESET} | "
+              f"{dir_color}{dir_text} {arrow}{Color.RESET} | "
+              f"Length: {Color.MAGENTA}{tu_len}{Color.RESET} bytes")
+        
+        print(f"{Color.BOLD}{pkt.name}:{Color.RESET} "
+              f"{pkt.src} → {pkt.dst} | "
+              f"Protocol: {Color.YELLOW}{pkt.payload.name if pkt.payload else 'None'}{Color.RESET}")
+        
+        # Show protocol-specific info
+        if ICMP in pkt:
+            print(f"{Color.BOLD}ICMP:{Color.RESET} Type {pkt[ICMP].type} | Code {pkt[ICMP].code}")
+        elif ICMPv6ND_RS in pkt:
+            print(f"{Color.BOLD}ICMPv6:{Color.RESET} Router Solicitation")
+        elif ICMPv6ND_RA in pkt:
+            print(f"{Color.BOLD}ICMPv6:{Color.RESET} Router Advertisement")
+        elif ICMPv6ND_NS in pkt:
+            print(f"{Color.BOLD}ICMPv6:{Color.RESET} Neighbor Solicitation")
+        elif ICMPv6ND_NA in pkt:
+            print(f"{Color.BOLD}ICMPv6:{Color.RESET} Neighbor Advertisement")
+        elif TCP in pkt:
+            flags = pkt[TCP].flags
+            print(f"{Color.BOLD}TCP:{Color.RESET} "
+                  f"Port {pkt[TCP].sport} → {pkt[TCP].dport} | "
+                  f"Flags: {Color.YELLOW}{flags}{Color.RESET}")
+        
+        # Optional: show packet summary
+        print(f"{Color.GRAY}{pkt.summary()}{Color.RESET}")
+        
+    except Exception as e:
+        print(f"{Color.RED}[ERROR]: {e}{Color.RESET}")
 
 def main():
-    fifo_path = "./tcp_less_log.fifo"
+    with open("./env/fifo_end.txt") as f:
+        fifo_path = f.read().strip()
+    
+    fd = os.open(fifo_path, os.O_RDONLY)
+    event_size = 1 + 8 + 2 + MTU_SIZE
+    event_num = 0
     
     try:
-        with open(fifo_path, 'rb') as fifo:
-            print(f"Listening on {fifo_path}...")
-            
-            while True:
-                # Read data from FIFO
-                data = fifo.read(1024)  # Read in chunks
-                
-                if not data:
-                    # EOF - writer closed
-                    print("FIFO closed by writer")
-                    break
-                
-                # For now, just print raw bytes
-                print(f"Received {len(data)} bytes: {data[:20]}...")  # First 20 bytes
-                
+        while True:
+            data = os.read(fd, event_size)
+            if not data:
+                break
+            if len(data) == event_size:
+                event_num += 1
+                display_event(event_num, data)
+
+        close("Server closed abruptly")
     except KeyboardInterrupt:
-        print("\nShutting down logger")
-    except FileNotFoundError:
-        print(f"Error: {fifo_path} not found. Make sure C program creates it first.")
-    except Exception as e:
-        print(f"Error: {e}")
+        close("Debug process recieved interrupt")
+    finally:
+        os.close(fd)
 
 if __name__ == '__main__':
     main()

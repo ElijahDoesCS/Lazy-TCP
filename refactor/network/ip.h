@@ -31,7 +31,7 @@ struct IPv4 {
 
 /**
  * @brief Validate IPv4 header integrity.
- * @param ip   Generic pointer to the IPv4 header
+ * @param ip   Pointer to the IPv4 header structure
  * @param len  Total packet length in bytes
  * @return     1 if valid, 0 if malformed (caller must silently drop)
  */

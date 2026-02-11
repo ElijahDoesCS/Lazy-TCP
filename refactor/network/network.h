@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 uint16_t checksum(uint8_t *buf, int len);
 

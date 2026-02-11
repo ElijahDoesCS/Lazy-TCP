@@ -1,28 +1,15 @@
 #ifndef TCP_H
 #define TCP_H
 
-typedef enum Con_State Con_State;
-
 typedef struct TCP TCP;
-typedef struct ID ID;
 typedef struct Flags Flags;
-typedef struct Send_State Send_State;
-typedef struct Recieve_State Recieve_State;
-typedef struct TCB TCB;
+typedef struct Pseudo Pseudo;
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
-
-enum Con_State {
-    TCP_SYN_RECEIVED,  // Received SYN, sent SYN-ACK, awaiting ACK
-    TCP_ESTABLISHED,   // Connection open, data transfer enabled
-    TCP_CLOSE_WAIT,    // Received FIN, awaiting local close
-    TCP_CLOSING,       // Simultaneous close, awaiting final ACK
-    TCP_LAST_ACK,      // Sent FIN after receiving FIN, awaiting ACK
-    TCP_TIME_WAIT      // Both sides closed, waiting for delayed packets
-};
+#include <arpa/inet.h>
 
 struct TCP {
     uint16_t src_port;     // Source port
@@ -34,15 +21,18 @@ struct TCP {
     uint16_t window;       // Receive window size
     uint16_t checksum;     // Header + pseudo-header checksum
     uint16_t urgent_ptr;   // Urgent pointer (if URG flag set)
-
 } __attribute__((packed));
 
-struct ID {
-    uint16_t src_port;
-    uint16_t dst_port;
-    uint32_t src_ip;
-    uint32_t dst_ip;
-};
+// # define SEQ_LT(a,b)  ((int32_t)((a)-(b)) < 0)
+// # define SEQ_LEQ(a,b) ((int32_t)((a)-(b)) <= 0)
+// # define SEQ_GT(a,b)  ((int32_t)((a)-(b)) > 0)
+// # define SEQ_GEQ(a,b) ((int32_t)((a)-(b)) >= 0)
+
+# define FIN  0x01
+# define SYN  0x02
+# define RST  0x04
+# define PSH  0x08
+# define ACK  0x10
 
 struct Flags {
     bool fin;
@@ -52,41 +42,31 @@ struct Flags {
     bool ack;
 };
 
-struct Send_State {
-    uint32_t unac;
-    uint32_t next;
-    uint32_t window;
-    uint32_t iss;
-};
+struct Pseudo {
+    uint32_t src;
+    uint32_t dst;
+    uint8_t zero;
+    uint8_t proto;
+    uint16_t tcp_len;
+} __attribute__((packed));
 
-struct Recieve_State {
-    uint32_t next;
-    uint32_t window;
-    uint32_t irs;
-};
+/**
+ * @brief Calculate the TCP checksum
+ * @param buf    Opaque pointer to the org packet
+ * @param len    Full length of the packet
+ * @param offset Offset into the tcp header
+ * @return The TCP checksum value
+ */
+uint16_t tcp_checksum(uint8_t *buf, int len, int offset);
 
-struct TCB {
-    ID id;
-
-    Send_State    send;
-    Recieve_State recv;
-
-    uint8_t  recv_buf[16384];
-    uint32_t recv_size;
-    uint32_t recv_consumed;
-
-    // Going to implement this later
-    // struct timeval retransmit_timer;
-
-    TCB *next;
-};
-
-# define FIN  0x01
-# define SYN  0x02
-# define RST  0x04
-# define PSH  0x08
-# define ACK  0x10
-
-int tcp_dispatch(uint8_t *buf, int len, int offset, int fd);
+/**
+ * @brief Dispatch the TCP packet to its corresponding function
+ * @param fd     The tun file descriptor for multi-write actions
+ * @param buf    An opaque pointer to the packet contents
+ * @param len    The length of the entire packet
+ * @param offset The offset into the TCP segment
+ * @return The number of bytes still writeable to the device 
+ */
+int tcp_dispatch(int fd, uint8_t *buf, int len, int offset);
 
 #endif

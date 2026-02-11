@@ -34,8 +34,7 @@ int net_demux(int fd, uint8_t *buf, int len) {
         case PROTO_ICMP:
             return icmp_dispatch(buf, len, ihl);
         case PROTO_TCP:
-            // return tcp_dispatch(buf, len, ihl);
-            return 0;
+            return tcp_dispatch(fd, buf, len, ihl); 
         default:
             // Echo back or send proto unreachable
             return icmp_dest_unreachable(buf, len, ihl);

@@ -15,39 +15,31 @@
 #include "./network/ip.h"
 #include "./log/log.h"
 
-static volatile sig_atomic_t g_shutdown = 0;
+static volatile sig_atomic_t g_shutdown = 0; // Shutdown the server and cleanup resources
 
 static void server_shutdown(int sig) {
     (void)sig;
     g_shutdown = 1;
+
+    if (VERBOSE(g_log_fd))
+        printf("[LOG]: Requested server teardown...\n");
 }
 
-void server_run(uint8_t *tu, int mtu, Tun *tun, int log_fd) {
-    int nread, log = (log_fd > 0);
-
+void server_run(uint8_t *tu, int mtu, Tun *tun) {
     while (!g_shutdown) {
-        nread = tun_read(tun, tu, mtu);
+        int nread = tun_read(tun, tu, mtu);
+        int nwrite = 0;
         if (nread > 0) {
-            if (log) {
-                Event event = {
-                    .dir = 1,
-                    .timestamp_ns =  
-                };
-                
-            }
-
-            int nwrite = net_demux(tun->fd, tu, nread);
-            if (nwrite > 0) {
-                tun_write(tun, tu, nwrite);
-
-                if (log) {
-
-                }
-            }
+            LOG_EVENT(tu, nread, LOG_READ);
+            nwrite = net_demux(tun->fd, tu, nread);
         }
-
+        if (nwrite > 0) {
+            LOG_EVENT(tu, nwrite, LOG_WRITE);
+            tun_write(tun, tu, nwrite);
+        } 
     }
 
+    LOG_EVENT(NULL, 0, LOG_SHUTDOWN);
 }
 
 int main(int argc, char **argv) {
@@ -65,29 +57,32 @@ int main(int argc, char **argv) {
     // Copy arguments into memory
     char ip[INET_ADDRSTRLEN] = {'\0'};
     strncpy(ip, argv[1], INET_ADDRSTRLEN - 1);
-
     char tun_name[IFNAMSIZ] = {'\0'};
     strncpy(tun_name, argv[2], IFNAMSIZ - 1);
-
     bool verbose = (argc > 3 && strcmp(argv[3], "vb") == 0);
 
     // Initialize the device
     Tun *tun = tun_init(tun_name, ip);
     if (tun == NULL) 
         exit(EXIT_FAILURE);
-    
-    // Initialize debug
-    int log_fd = -1;
-    if (verbose) 
-        log_fd = log_init();
-    
-    if (verbose && log_fd == -1) {
-        fprintf(stderr, "[ERROR]: Could not initialize log device ~ %s\n", strerror(errno));
-        tun_destroy(tun);
-        exit(EXIT_FAILURE);
-    }
+
+    // Initialize resource deallocation handler
+    struct sigaction sa_usr = {0};
+    sa_usr.sa_handler = server_shutdown;
+    sigemptyset(&sa_usr.sa_mask);
+    sa_usr.sa_flags = SA_RESTART;
+    sigaction(SIGUSR1, &sa_usr, NULL);
 
     if (verbose) {
+        signal(SIGPIPE, SIG_IGN);
+        g_log_fd = log_init();
+
+        if (!VERBOSE(g_log_fd)) {
+            fprintf(stderr, "[ERROR]: Could not initialize log device ~ %s\n", strerror(errno));
+            tun_destroy(tun);
+            exit(EXIT_FAILURE);
+        }
+
         printf(
             "TUN device:\n"
             "    Device name    : %s\n"
@@ -99,18 +94,14 @@ int main(int argc, char **argv) {
         );
     }
 
-    // Initialize resource deallocation handler
-    struct sigaction sa_usr = {0};
-    sa_usr.sa_handler = server_shutdown;
-    sigemptyset(&sa_usr.sa_mask);
-    sa_usr.sa_flags = SA_RESTART;
-    sigaction(SIGUSR1, &sa_usr, NULL);
+    uint8_t buf[MTU_SIZE] = {'\0'};
+    server_run(buf, MTU_SIZE, tun);    
 
-    uint8_t buf[MTU_SIZE + 1] = {'\0'};
-    server_run(buf, MTU_SIZE, tun, log_fd);    
-
-    if (log_fd > 0)
-        close(log_fd);    
+    if (VERBOSE(g_log_fd)) {
+        printf("[LOG]: Freeing server resources\n");
+        close(g_log_fd);
+    }
+        
     // tcb_free
     tun_destroy(tun);
 }
