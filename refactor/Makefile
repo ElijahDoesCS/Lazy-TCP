@@ -3,25 +3,24 @@ CFLAGS = -Wall -Wextra -g # -Wconversion -Wsign-conversion
 TARGET = tcp_less
 OBJ_DIR = obj_files
 
-ENTRY    = main.c
-TUN 	 = tun/tun_device.c
-NETWORK  = network/network.c
-ICMP     = network/icmp/icmp.c
-IP       = network/ip.c
-LOG 	 = log/log.c
-FIFO_DIR = ./env/fifo_end.txt
-FIFO	 = $(shell cat $(FIFO_DIR))
+ENTRY     = main.c
+TUN 	  = tun/tun_device.c
+NETWORK   = network/network.c
+ICMP      = network/icmp/icmp.c
+IP        = network/ip.c
+LOG 	  = log/log.c
+FIFO	  = ./env/fifo_end.txt
+TCP   	  = network/tcp/tcp.c
+TCP_STATE = network/tcp/tcp_state.c
+TCB_HASH  = network/tcp/hash/tcb_hash.c
 
 # Degraded or unimplemented
 # T_POOL   = thread_pool/thread_pool.c
 # TCP	   = network/tcp/tcp.c
-TCP_DISP   = network/tcp/tcp.c
 # HTTP 	   = network/http/http.c
 # DEBUG    = debug/debug.c
 
-
-
-SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG) $(TCP_DISP)
+SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG) $(TCP_DISP) $(TCP_STATE) $(TCB_HASH)
 
 OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
 

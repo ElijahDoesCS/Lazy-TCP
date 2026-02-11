@@ -2,6 +2,7 @@
 #include "./tcp_state.h"
 #include "../ip.h"
 #include "../../log/log.h"
+#include "./hash/tcb_hash.h"
 
 uint16_t tcp_checksum(uint8_t *buf, int len, int offset) {
     IPv4 *ip = (IPv4 *) buf;
@@ -38,6 +39,8 @@ int tcp_dispatch(int fd, uint8_t *buf, int len, int offset) {
     uint16_t valid = tcp_checksum(buf, len, offset);
     if (tcp->checksum != valid)
         return 0;
+
+    // Call the hash interface to get a tcb
     
     // ID id = {
     //     .src_port = ntohs(tcp->src_port),

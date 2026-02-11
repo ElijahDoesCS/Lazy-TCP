@@ -15,13 +15,11 @@
 //   tun_destroy(tun);
 //
 
-typedef struct Tun Tun;
-
-struct Tun {
+typedef struct {
     char *name; // Device name (e.g., "tun0")
     char *ip;   // IP address string (e.g., "10.8.0.1")
     int fd;     // File descriptor for reading/writing packets
-};
+} Tun;
 
 # define TUN_FILE_ERROR   -3  
 # define TUN_KWRITE_ERROR -1  
@@ -74,7 +72,6 @@ int tun_ip_add(char *name, char *ip);
 
 /**
  * Allocate a TUN device via /dev/net/tun.
- * 
  * @param name Device name (max 16 bytes). If empty, kernel assigns a name.
  *             The actual assigned name is written back to this buffer.
  * @return File descriptor on success, error code on failure.

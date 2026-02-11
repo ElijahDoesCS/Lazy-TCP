@@ -11,12 +11,10 @@
 // checksum using ones-complement algorithm.
 //
 
-typedef struct IPv4 IPv4;
-
 #include <stdint.h>
 #include <arpa/inet.h>
 
-struct IPv4 {
+typedef struct {
     uint8_t  version_ihl;  // Upper 4: version, Lower 4: header length in 32-bit words
     uint8_t  tos;          // Type of service
     uint16_t len;          // Total length (header + payload)
@@ -27,7 +25,7 @@ struct IPv4 {
     uint16_t checksum;     // Header checksum
     uint32_t src;          // Source IP
     uint32_t dst;          // Destination IP
-} __attribute__((packed));
+} __attribute__((packed)) IPv4;
 
 /**
  * @brief Validate IPv4 header integrity.

@@ -1,17 +1,13 @@
 #ifndef TCP_H
 #define TCP_H
 
-typedef struct TCP TCP;
-typedef struct Flags Flags;
-typedef struct Pseudo Pseudo;
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
 
-struct TCP {
+typedef struct {
     uint16_t src_port;     // Source port
     uint16_t dst_port;     // Destination port
     uint32_t seq_num;      // Sequence number
@@ -21,7 +17,7 @@ struct TCP {
     uint16_t window;       // Receive window size
     uint16_t checksum;     // Header + pseudo-header checksum
     uint16_t urgent_ptr;   // Urgent pointer (if URG flag set)
-} __attribute__((packed));
+} __attribute__((packed)) TCP;
 
 // # define SEQ_LT(a,b)  ((int32_t)((a)-(b)) < 0)
 // # define SEQ_LEQ(a,b) ((int32_t)((a)-(b)) <= 0)
@@ -34,21 +30,21 @@ struct TCP {
 # define PSH  0x08
 # define ACK  0x10
 
-struct Flags {
+typedef struct {
     bool fin;
     bool syn;
     bool rst;
     bool psh;
     bool ack;
-};
+} Flags;
 
-struct Pseudo {
+typedef struct {
     uint32_t src;
     uint32_t dst;
     uint8_t zero;
     uint8_t proto;
     uint16_t tcp_len;
-} __attribute__((packed));
+} __attribute__((packed)) Pseudo;
 
 /**
  * @brief Calculate the TCP checksum
