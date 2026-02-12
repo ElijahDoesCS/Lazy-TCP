@@ -15,7 +15,7 @@
 //   tun_destroy(tun);
 //
 
-typedef struct {
+typedef struct Tun {
     char *name; // Device name (e.g., "tun0")
     char *ip;   // IP address string (e.g., "10.8.0.1")
     int fd;     // File descriptor for reading/writing packets

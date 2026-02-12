@@ -135,7 +135,7 @@ Tun *tun_init(char *name, char *ip) {
         return NULL;
     }
 
-    Tun *tun = (Tun *) malloc(sizeof(Tun));
+    Tun *tun = malloc(sizeof(Tun));
     if (tun == NULL) {
         fprintf(stderr, "[ERROR]: Could not allocate Tun structure\n");
         close(fd);

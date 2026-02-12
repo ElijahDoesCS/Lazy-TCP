@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 
-typedef struct {
+typedef struct IPv4 {
     uint8_t  version_ihl;  // Upper 4: version, Lower 4: header length in 32-bit words
     uint8_t  tos;          // Type of service
     uint16_t len;          // Total length (header + payload)

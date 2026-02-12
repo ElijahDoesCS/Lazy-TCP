@@ -10,7 +10,7 @@
 // snapshots for real-time protocol debugging.
 //
 // Architecture:
-//   - Named FIFO at /tmp/tcp_less_log.fifo
+//   - Named FIFO at ./tcp_less_log.fifo
 //   - Non-blocking writes (drops events if Python can't keep up)
 //   - Python viewer runs independently, parses and prettifies output
 //
@@ -64,7 +64,7 @@ void log_event(uint8_t *tu, uint16_t len, uint8_t dir, int fd);
 
 /**
  * Initialize debug logging via named FIFO.
- * Creates /tmp/tcp_less_log.fifo and opens it for writing (non-blocking).
+ * Creates ./tcp_less_log.fifo and opens it for writing (non-blocking).
  * Python debug viewer must be running and reading from FIFO before calling.
  * 
  * @return File descriptor for writing events on success, -1 if no logger attached

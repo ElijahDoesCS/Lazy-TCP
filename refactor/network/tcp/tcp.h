@@ -1,13 +1,24 @@
 #ifndef TCP_H
 #define TCP_H
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TCP Protocol Handler
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Handles TCP connection establishment, data transfer, and teardown. Manages
+// per-connection state via TCBs (Transmission Control Blocks) stored in a
+// hash table. Supports three-way handshake, data segmentation, and graceful
+// close. No options parsing (except MSS), no retransmission yet, no congestion
+// control.
+//
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
 
-typedef struct {
+typedef struct TCP {
     uint16_t src_port;     // Source port
     uint16_t dst_port;     // Destination port
     uint32_t seq_num;      // Sequence number
@@ -18,6 +29,8 @@ typedef struct {
     uint16_t checksum;     // Header + pseudo-header checksum
     uint16_t urgent_ptr;   // Urgent pointer (if URG flag set)
 } __attribute__((packed)) TCP;
+
+# define TCP_LISTEN_PORT 8080
 
 // # define SEQ_LT(a,b)  ((int32_t)((a)-(b)) < 0)
 // # define SEQ_LEQ(a,b) ((int32_t)((a)-(b)) <= 0)
@@ -30,7 +43,7 @@ typedef struct {
 # define PSH  0x08
 # define ACK  0x10
 
-typedef struct {
+typedef struct Flags {
     bool fin;
     bool syn;
     bool rst;

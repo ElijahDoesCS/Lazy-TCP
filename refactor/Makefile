@@ -5,14 +5,17 @@ OBJ_DIR = obj_files
 
 ENTRY     = main.c
 TUN 	  = tun/tun_device.c
+FIFO	  = $(shell cat ./env/fifo_end.txt)
+
 NETWORK   = network/network.c
 ICMP      = network/icmp/icmp.c
 IP        = network/ip.c
 LOG 	  = log/log.c
-FIFO	  = ./env/fifo_end.txt
+
 TCP   	  = network/tcp/tcp.c
-TCP_STATE = network/tcp/tcp_state.c
-TCB_HASH  = network/tcp/hash/tcb_hash.c
+TCB 	  = network/tcp/tcb.c
+HASH      = network/tcp/hash.c
+VECTOR    = network/tcp/vector.c
 
 # Degraded or unimplemented
 # T_POOL   = thread_pool/thread_pool.c
@@ -20,7 +23,7 @@ TCB_HASH  = network/tcp/hash/tcb_hash.c
 # HTTP 	   = network/http/http.c
 # DEBUG    = debug/debug.c
 
-SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG) $(TCP_DISP) $(TCP_STATE) $(TCB_HASH)
+SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG) $(TCP) $(TCB) $(HASH) $(VECTOR)
 
 OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
 

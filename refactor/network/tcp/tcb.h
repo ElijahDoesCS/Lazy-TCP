@@ -1,7 +1,15 @@
-#ifndef TCP_TCB_H
-#define TCP_TCB_H
+#ifndef TCB_H
+#define TCB_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct TCP TCP;
+
+#define TCP_RCVBUF  16384
+#define TCP_WIN_DEF 8192
 
 typedef enum Con_State {
     TCP_SYN_RECEIVED,  // Received SYN, sent SYN-ACK, awaiting ACK
@@ -32,9 +40,7 @@ typedef struct Receive_State {
     uint32_t irs;
 } Receive_State;
 
-typedef struct TCB TCB;
-
-struct TCB {
+typedef struct TCB {
     ID id;
 
     Send_State    send;
@@ -48,8 +54,24 @@ struct TCB {
 
     // Going to implement this later
     // struct timeval retransmit_timer;
+} TCB;
 
-    TCB *next;
-};
+/**
+ * @brief  Update the state of a TCB
+ */
+void tcb_state_update(TCP *tcp, TCB *tcb);
+
+/**
+ * @brief  Check if TCB IDs are matching
+ * @return True if they match
+ */
+bool tcb_id_match(ID *a, ID *b);
+
+/**
+ * @brief  Initialize a new TCB
+ * @return Pointer to TCB if successful, 
+ *         NULL on failure
+ */
+TCB *tcb_init(ID id);
 
 #endif
