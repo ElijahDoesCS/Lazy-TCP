@@ -16,7 +16,6 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
-#include <arpa/inet.h>
 
 typedef struct TCP {
     uint16_t src_port;     // Source port
@@ -58,6 +57,11 @@ typedef struct {
     uint8_t proto;
     uint16_t tcp_len;
 } __attribute__((packed)) Pseudo;
+
+/**
+ * @brief Generate an initial sequence number
+ */
+uint32_t tcp_gen_iss();
 
 /**
  * @brief Calculate the TCP checksum

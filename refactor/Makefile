@@ -16,6 +16,7 @@ TCP   	  = network/tcp/tcp.c
 TCB 	  = network/tcp/tcb.c
 HASH      = network/tcp/hash.c
 VECTOR    = network/tcp/vector.c
+SEGMENT   = network/tcp/segment.c
 
 # Degraded or unimplemented
 # T_POOL   = thread_pool/thread_pool.c
@@ -23,7 +24,7 @@ VECTOR    = network/tcp/vector.c
 # HTTP 	   = network/http/http.c
 # DEBUG    = debug/debug.c
 
-SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG) $(TCP) $(TCB) $(HASH) $(VECTOR)
+SRCS = $(ENTRY) $(TUN) $(NETWORK) $(ICMP) $(IP) $(LOG) $(TCP) $(TCB) $(HASH) $(VECTOR) $(SEGMENT)
 
 OBJS = $(addprefix $(OBJ_DIR)/, $(notdir $(SRCS:.c=.o)))
 

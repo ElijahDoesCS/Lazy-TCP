@@ -1,14 +1,18 @@
 #include "./tcp.h"
 #include "./tcb.h"
 #include "./hash.h"
+#include "./segment.h"
 
 #include "../ip.h"
 #include "../../log/log.h"
 
-static int tcp_syn_ack(uint8_t *buf, int len, int offset);
-static int tcp_rst(uint8_t *buf, int len, int offset);
-static int tcp_ack(uint8_t *buf, int len, int offset);
-static int tcp_write(uint8_t *buf, int len, int offset);
+static Edge tcp_parse_edge(Flags *flags, ID *id, TCB **tcb);
+
+uint32_t tcp_gen_iss() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (tv.tv_sec * 1000000 + tv.tv_usec) + rand();
+}
 
 uint16_t tcp_checksum(uint8_t *buf, int len, int offset) {
     IPv4 *ip = (IPv4 *) buf;
@@ -41,6 +45,7 @@ uint16_t tcp_checksum(uint8_t *buf, int len, int offset) {
 int tcp_dispatch(int fd, uint8_t *buf, int len, int offset) {
     IPv4 *ip = (IPv4 *) buf;
     TCP *tcp = (TCP *) (buf + offset);
+    TCB *tcb = NULL;
 
     uint16_t valid = tcp_checksum(buf, len, offset);
     if (tcp->checksum != valid)
@@ -61,36 +66,77 @@ int tcp_dispatch(int fd, uint8_t *buf, int len, int offset) {
         .ack = tcp->flags & ACK
     };
 
-    TCB *con = hash_find(id); 
-    if (!con) { 
-        if (flags.rst)
-            return 0;
-        
-        if (flags.syn && !flags.ack && id.dst_port == TCP_LISTEN_PORT) { // New connection
-            con = tcb_init(id);
-            if (!con || !hash_insert(con))
-                return 0;
+    // Get the state transition and TCB
+    Edge edge = tcp_parse_edge(&flags, &id, &tcb);
+    tcb_state_update(tcp, tcb, edge);
 
-            // Send a SYN ACK
-            // Update the state
-
-            // Update the packet
-
-        }
-        else { // Send a reset
-
-        }
-    
-        printf("I think we created and inserted a TCB!\n");
+    switch (edge) {
+        case TCP_EVT_SYN:
+            return tcp_syn_ack((uint8_t *) tcb, buf, len, offset);
+        default: 
+            break;
     }
-    else { // Handle the active connection
 
-    }
+    // tcb_state_update(tcp, tcb, edge);
+
+    // // Switch on event types
+    // switch (edge) {
+    //     case TCP_EVT_SYN:
+    //         int size = tcp_syn_ack((uint8_t *) tcb, buf, len, offset);
+    //         printf("The size of the new packet is: %d\n", size);
+    //         return size;
+    //     case TCP_EVT_SEND_RST:
+    //         break;
+    //     case TCP_EVT_DROP:
+    //         return 0;
+    //     default:
+    //         break;
+    // }
 
     return 0;
 }
 
-static int tcp_syn_ack(uint8_t *buf, int len, int offset) {
+// Classify based on flags, connection ID, and current TCB state
+static Edge tcp_parse_edge(Flags *flags, ID *id, TCB **tcb) {
+    TCB *con = hash_find(*id);
 
+    if (!con) {
+        if (flags->rst)
+            return TCP_EVT_DROP;
+
+        if (flags->syn && !flags->ack && id->dst_port == TCP_LISTEN_PORT) {
+            con = tcb_init(*id);
+            if (!con || !hash_insert(con))
+                return TCP_EVT_DROP;
+
+            printf("Just created a new tcb\n");
+
+            *tcb = con;
+
+            return TCP_EVT_SYN;
+        }
+
+        return TCP_EVT_SEND_RST;
+    }
+
+    if (flags->rst)
+        return TCP_EVT_RST;
+
+    switch (con->state) {
+        // case TCP_SYN_RECEIVED:
+        //     break;
+        // case TCP_ESTABLISHED:
+        //     break;
+        // case TCP_CLOSE_WAIT:
+        //     break;
+        // case TCP_CLOSING:
+        //     break;
+        // case TCP_LAST_ACK:
+        //     break;
+        // case TCP_TIME_WAIT:
+        //     break;
+        default:
+            return TCP_EVT_DROP;
+    }
 }
 

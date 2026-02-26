@@ -1,7 +1,35 @@
 #include "./tcb.h"
+#include "./tcp.h"
+#include "../ip.h"
 
-void tcb_state_update(TCP *tcp, TCB *tcb) {
-    
+#include <stdio.h>
+#include <stdlib.h>
+
+void tcb_state_update(TCP *tcp, TCB *tcb, Edge edge) {
+    switch (edge) {
+        case TCP_EVT_SYN:
+            tcb->recv.irs = ntohl(tcp->seq_num);
+            tcb->recv.next = tcb->recv.irs + 1; // Expect ISN + 1
+            tcb->send.window = ntohs(tcp->window);
+            tcb->send.iss = tcp_gen_iss();
+            tcb->send.next = tcb->send.iss + 1; // Next seq no we'll send
+            tcb->send.unac = tcb->send.iss; // Nothing acknoledged yet
+            break;
+        case TCP_EVT_DATA:
+            break;
+        case TCP_EVT_ACK:
+            break;
+        case TCP_EVT_FIN:
+            break;
+        case TCP_EVT_RST:
+            break;
+        case TCP_EVT_DROP:
+            break;
+        case TCP_EVT_SEND_RST:
+            break;
+        default:
+            break;
+    }
 }
 
 bool tcb_id_match(ID *a, ID *b) {

@@ -1,4 +1,4 @@
-from scapy.layers.inet import IP, ICMP, TCP, UDP
+from scapy.layers.inet import IP, ICMP, TCP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_RS, ICMPv6ND_RA, ICMPv6ND_NS, ICMPv6ND_NA
 import struct
 import os
@@ -17,6 +17,13 @@ class Color:
     MAGENTA = '\033[95m'
     CYAN = '\033[96m'
     GRAY = '\033[90m'
+
+def display_hexdump(data):
+    for i in range(0, len(data), 16):
+        chunk = data[i:i+16]
+        hex_part = ' '.join(f'{b:02x}' for b in chunk)
+        ascii_part = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
+        print(f"{Color.GRAY}{i:04x}  {hex_part:<47}  {ascii_part}{Color.RESET}")
 
 def close(msg):
     print(f"\n\n{Color.YELLOW}[LOG]: Closing debugger...{Color.RESET}\n")

@@ -1,39 +1,41 @@
-# TODO
+# Lazy TCP
+- A userspace TCP implementation for web content hosting. 
+
+## TODO & Problems
 - Implemeent my TCP refactor and build out timing mechanisms
-    - Additionally implement a hash table for the TCBs
     - Idle connection sweep
     - Retransmission timeout
+    - Close wait timeout
     - Buffered sending and recieving
-    - Implement MSS option
-- Handle IP options?
+    - MSS option
+    - Push the TCB structure to the debug interface
+    - Tests
+        - Unit
+        - Integration
 
-# Usage
+## Usage
 - Start the server:
-    ./tcp_less $(cat ./env/ip_end.txt) $(cat ./env/tun.txt) (Optional third argument for verbose output)
-    ./tcp_less $(cat ./env/ip_end.txt) $(cat ./env/tun.txt) vb
+    ./tcp_less $(cat ./env/ip_end.txt) $(cat ./env/tun.txt) vb <--- (Optional third argument for verbose output)
+
 - Kill the server instance:
     ./shutudown.sh
 
-# Sample requests
+- Start the debug interface
+    ./log/log.py
+
+- Build Script (Compiles the binary with privileges for creating the interface)
+    make ; make cap
+
+- To keep the kernel from injecting resets on the default port address when running locally
+    iptables -A OUTPUT -p tcp --sport 12345 --tcp-flags RST RST -j DROP
+
+## Sample requests
 - ping the host
     - ping -4 -c 1 10.8.0.2
-- Curl the host
-    - 
 
-# Problems
+- Curl the host
+    - curl http://10.8.0.1:8080/
+
+## Quirks
 - If we request a teardown while we're waiting for this to connect, we get into deadlock until the debugger starts. 
   At which point, after sending a request the debugger immediately gets its shutdown
-
-
-// Get the  flags
-    // Get the connection ID and see if we have a TCB for it
-    // If the connection is null
-        // If we get a rst, drop it
-        // If we get just a SYN we create a new connection
-        // Otherwise we send a reset ourselves
-    // If the connection is open
-        
-        // If we got a reset, remove if seq no is valid
-        // If we got a syn, resend our syn/ack
-        // If it's an ack, move to established if ack is valid
-        // 

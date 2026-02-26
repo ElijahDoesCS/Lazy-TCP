@@ -5,11 +5,22 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 typedef struct TCP TCP;
 
 #define TCP_RCVBUF  16384
 #define TCP_WIN_DEF 8192
+
+typedef enum Edge {
+    TCP_EVT_SYN,          // Valid new connection request
+    TCP_EVT_DATA,         // Segment carrying payload data
+    TCP_EVT_ACK,          // Pure acknowledgment
+    TCP_EVT_FIN,          // Peer initiated close
+    TCP_EVT_RST,          // Reset on an active connection
+    TCP_EVT_DROP,         // Invalid segment, silently drop
+    TCP_EVT_SEND_RST,     // No matching connection, send reset
+} Edge;
 
 typedef enum Con_State {
     TCP_SYN_RECEIVED,  // Received SYN, sent SYN-ACK, awaiting ACK
@@ -57,9 +68,9 @@ typedef struct TCB {
 } TCB;
 
 /**
- * @brief  Update the state of a TCB
+ * @brief  Update the state of a valid TCB 
  */
-void tcb_state_update(TCP *tcp, TCB *tcb);
+void tcb_state_update(TCP *tcp, TCB *tcb, Edge edge);
 
 /**
  * @brief  Check if TCB IDs are matching

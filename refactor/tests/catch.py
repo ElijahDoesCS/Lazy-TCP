@@ -3,6 +3,8 @@ from scapy.sendrecv import send, sr1
 from scapy.packet import Raw
 from scapy.all import hexdump
 
+def_src_port = 0
+
 def dump_packet(label, pkt):
     print("\n" + "=" * 70)
     print(label)
@@ -28,7 +30,7 @@ def dump_packet(label, pkt):
 
 
 class TCPClient:
-    def __init__(self, src_ip, dst_ip, src_port=12345, dst_port=8080):
+    def __init__(self, src_ip, dst_ip, src_port=def_src_port, dst_port=8080):
         self.src_ip = src_ip
         self.dst_ip = dst_ip
         self.src_port = src_port
@@ -191,5 +193,9 @@ def get_env():
 
 if __name__ == "__main__":
     ip_from, ip_to = get_env()
+
+    with open("./env/src_port") as f: 
+        def_src_port = int(f.read().strip())
+
     client = TCPClient(ip_from, ip_to)
     client.menu()
