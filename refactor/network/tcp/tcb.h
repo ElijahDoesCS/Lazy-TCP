@@ -1,6 +1,15 @@
 #ifndef TCB_H
 #define TCB_H
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TCP Transport Layer - Per-Connection State
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Defines the TCB (Transmission Control Block), the core data structure
+// tracking send/receive sequence numbers, connection ID, and receive buffer
+// for each active TCP connection.
+//
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -12,23 +21,29 @@ typedef struct TCP TCP;
 #define TCP_RCVBUF  16384
 #define TCP_WIN_DEF 8192
 
+# define SEQ_LT(a,b)  ((int32_t)((a)-(b)) < 0)  // If a is less than b
+# define SEQ_LEQ(a,b) ((int32_t)((a)-(b)) <= 0) // If a is let b
+# define SEQ_GT(a,b)  ((int32_t)((a)-(b)) > 0)  // If a is greater than b
+# define SEQ_GEQ(a,b) ((int32_t)((a)-(b)) >= 0) // If a is get b
+
 typedef enum Edge {
-    TCP_EVT_SYN,          // Valid new connection request
-    TCP_EVT_DATA,         // Segment carrying payload data
-    TCP_EVT_ACK,          // Pure acknowledgment
-    TCP_EVT_FIN,          // Peer initiated close
-    TCP_EVT_RST,          // Reset on an active connection
-    TCP_EVT_DROP,         // Invalid segment, silently drop
-    TCP_EVT_SEND_RST,     // No matching connection, send reset
+    EVT_SYN,          // Valid new connection request
+    EVT_DATA,         // Segment carrying payload data
+    EVT_ACK,          // Pure acknowledgment
+    EVT_FIN,          // Peer initiated close
+    EVT_RST,          // Reset on an active connection
+    EVT_DROP,         // Invalid segment, silently drop
+    EVT_SEND_RST,     // No matching connection, send reset
 } Edge;
 
 typedef enum Con_State {
-    TCP_SYN_RECEIVED,  // Received SYN, sent SYN-ACK, awaiting ACK
-    TCP_ESTABLISHED,   // Connection open, data transfer enabled
-    TCP_CLOSE_WAIT,    // Received FIN, awaiting local close
-    TCP_CLOSING,       // Simultaneous close, awaiting final ACK
-    TCP_LAST_ACK,      // Sent FIN after receiving FIN, awaiting ACK
-    TCP_TIME_WAIT      // Both sides closed, waiting for delayed packets
+    CON_CLOSED,       // State block is initialized but connection is not open
+    CON_SYN_RECEIVED, // Received SYN, sent SYN-ACK, awaiting ACK
+    CON_ESTABLISHED,  // Connection open, data transfer enabled
+    CON_CLOSE_WAIT,   // Received FIN, awaiting local close
+    CON_CLOSING,      // Simultaneous close, awaiting final ACK
+    CON_LAST_ACK,     // Sent FIN after receiving FIN, awaiting ACK
+    CON_TIME_WAIT     // Both sides closed, waiting for delayed packets
 } Con_State;
 
 typedef struct ID {
@@ -69,8 +84,9 @@ typedef struct TCB {
 
 /**
  * @brief  Update the state of a valid TCB 
+ * @return false if the segment contains an invalid sequence number
  */
-void tcb_state_update(TCP *tcp, TCB *tcb, Edge edge);
+bool tcb_state_update(TCP *tcp, TCB *tcb, Edge edge);
 
 /**
  * @brief  Check if TCB IDs are matching

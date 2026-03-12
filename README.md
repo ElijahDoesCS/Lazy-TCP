@@ -18,7 +18,7 @@
 - Respond on certain error conditions with ICMP destination unreachable
 
 ### Run Script
-sudo ./tcp_less $(cat ./input/ip.txt) $(cat ./input/tun.txt) vb
+sudo ./tcp_less $(cat ./env/ip.txt) $(cat ./env/tun.txt) vb
 
 ### Packet Generation Script
 sudo python3 ./packet_cooking/gen.py
@@ -33,3 +33,6 @@ sudo python3 ./packet_cooking/gen.py
 - Implement a retransmission queue
 - Not handling options
 - Have to update state on empty ACKs
+
+### To see the web content
+- Go to http://10.8.0.1 or the ip that you configured

@@ -1,34 +1,59 @@
 #include "./tcb.h"
 #include "./tcp.h"
 #include "../ip.h"
+#include "./hash.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-void tcb_state_update(TCP *tcp, TCB *tcb, Edge edge) {
+bool tcb_state_update(TCP *tcp, TCB *tcb, Edge edge) {
     switch (edge) {
-        case TCP_EVT_SYN:
+        case EVT_SYN:
             tcb->recv.irs = ntohl(tcp->seq_num);
             tcb->recv.next = tcb->recv.irs + 1; // Expect ISN + 1
             tcb->send.window = ntohs(tcp->window);
-            tcb->send.iss = tcp_gen_iss();
-            tcb->send.next = tcb->send.iss + 1; // Next seq no we'll send
-            tcb->send.unac = tcb->send.iss; // Nothing acknoledged yet
-            break;
-        case TCP_EVT_DATA:
-            break;
-        case TCP_EVT_ACK:
-            break;
-        case TCP_EVT_FIN:
-            break;
-        case TCP_EVT_RST:
-            break;
-        case TCP_EVT_DROP:
-            break;
-        case TCP_EVT_SEND_RST:
-            break;
+
+            if (tcb->state == CON_CLOSED) {
+                tcb->send.iss = tcp_gen_iss();
+                tcb->send.next = tcb->send.iss + 1; // Next seq no we'll send
+                tcb->send.unac = tcb->send.iss;     // Nothing acknoledged yet
+            }
+
+            tcb->state = CON_SYN_RECEIVED;
+
+            return true;
+
+        case EVT_ACK:    
+            uint32_t ack_no = ntohl(tcp->ack_num);
+
+            if (ack_no == (uint32_t) tcb->send.next) {
+                tcb->state = CON_ESTABLISHED;
+                tcb->send.unac = ack_no;
+            
+                return true;
+            }
+
+            return false;
+
+        case EVT_RST:
+            uint32_t seq_no = ntohl(tcp->seq_num);
+ 
+            if (SEQ_GEQ(seq_no, tcb->recv.next) && 
+                SEQ_LT(seq_no, tcb->recv.next + tcb->recv.window)) 
+            {
+                hash_delete(tcb);
+                return true;
+            }
+            
+            return false;
+        // case EVT_DATA:
+        //     return true;
+        // case EVT_FIN:
+        //     return true;
+        // case EVT_DROP:
+        //     return true;
         default:
-            break;
+            return true;
     }
 }
 
@@ -50,7 +75,7 @@ TCB *tcb_init(ID id) {
     tcb->id.src_ip   = id.src_ip;
     tcb->id.dst_ip   = id.dst_ip;
 
-    tcb->state = TCP_SYN_RECEIVED;
+    tcb->state = CON_CLOSED;
 
     tcb->send.unac   = 0;
     tcb->send.next   = 0;

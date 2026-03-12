@@ -67,6 +67,9 @@ void hash_delete(TCB *tcb) {
     Vector *cons = &(g_con_table.buckets[idx]);
 
     vec_delete(cons, tcb);
+
+    tcb = NULL;
+
     g_con_table.size--;
 }
 

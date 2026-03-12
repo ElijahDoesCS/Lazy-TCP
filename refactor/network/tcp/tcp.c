@@ -6,6 +6,8 @@
 #include "../ip.h"
 #include "../../log/log.h"
 
+#include <stdbool.h>
+
 static Edge tcp_parse_edge(Flags *flags, ID *id, TCB **tcb);
 
 uint32_t tcp_gen_iss() {
@@ -66,77 +68,94 @@ int tcp_dispatch(int fd, uint8_t *buf, int len, int offset) {
         .ack = tcp->flags & ACK
     };
 
-    // Get the state transition and TCB
     Edge edge = tcp_parse_edge(&flags, &id, &tcb);
-    tcb_state_update(tcp, tcb, edge);
+
+    if (!tcb_state_update(tcp, tcb, edge)) 
+        edge = EVT_DROP;
 
     switch (edge) {
-        case TCP_EVT_SYN:
+        case EVT_SYN:
             return tcp_syn_ack((uint8_t *) tcb, buf, len, offset);
+        case EVT_SEND_RST:
+            return tcp_rst((uint8_t *) tcb, buf, len, offset);
         default: 
             break;
     }
 
-    // tcb_state_update(tcp, tcb, edge);
-
-    // // Switch on event types
-    // switch (edge) {
-    //     case TCP_EVT_SYN:
-    //         int size = tcp_syn_ack((uint8_t *) tcb, buf, len, offset);
-    //         printf("The size of the new packet is: %d\n", size);
-    //         return size;
-    //     case TCP_EVT_SEND_RST:
-    //         break;
-    //     case TCP_EVT_DROP:
-    //         return 0;
-    //     default:
-    //         break;
-    // }
-
     return 0;
 }
 
-// Classify based on flags, connection ID, and current TCB state
 static Edge tcp_parse_edge(Flags *flags, ID *id, TCB **tcb) {
     TCB *con = hash_find(*id);
+    Edge edge = EVT_DROP;
 
     if (!con) {
-        if (flags->rst)
-            return TCP_EVT_DROP;
-
-        if (flags->syn && !flags->ack && id->dst_port == TCP_LISTEN_PORT) {
-            con = tcb_init(*id);
-            if (!con || !hash_insert(con))
-                return TCP_EVT_DROP;
-
-            printf("Just created a new tcb\n");
-
-            *tcb = con;
-
-            return TCP_EVT_SYN;
+        con = tcb_init(*id);
+        if (!con) goto pedge_out;
+        if (!hash_insert(con)) {
+            free(con);
+            con = NULL;
+            goto pedge_out;
         }
-
-        return TCP_EVT_SEND_RST;
     }
 
-    if (flags->rst)
-        return TCP_EVT_RST;
+    if (id->dst_port != TCP_LISTEN_PORT) {
+        edge = EVT_SEND_RST;
+        goto pedge_out;
+    }
+
+    if (flags->rst) {
+        edge = EVT_RST;
+        goto pedge_out;
+    }
+
+    // What if we get a reset in an attempt to establish a connection
+    // Do we send a reset if we get anything else on a closed connection
+
+    if (con->state == CON_CLOSED) {
+        if (flags->rst) goto pedge_out;
+        if (flags->syn && !flags->ack) {
+            edge = EVT_SYN;
+            goto pedge_out;
+        }
+        
+        edge = EVT_SEND_RST;
+        goto pedge_out;
+    }
 
     switch (con->state) {
-        // case TCP_SYN_RECEIVED:
+        case CON_SYN_RECEIVED:
+            if (flags->ack && !flags->syn)
+                edge = EVT_ACK;
+            else
+                edge = EVT_SEND_RST;
+     
+            break;
+
+        case CON_ESTABLISHED:
+            if (flags->rst) // Dead code?
+                edge = EVT_RST;
+            else if (flags->syn)
+                edge = EVT_SEND_RST;
+            else
+                edge = EVT_DATA;  
+
+            break;
+        // case CON_CLOSE_WAIT:
         //     break;
-        // case TCP_ESTABLISHED:
+        // case CON_CLOSING:
         //     break;
-        // case TCP_CLOSE_WAIT:
+        // case CON_LAST_ACK:
         //     break;
-        // case TCP_CLOSING:
-        //     break;
-        // case TCP_LAST_ACK:
-        //     break;
-        // case TCP_TIME_WAIT:
+        // case CON_TIME_WAIT:
         //     break;
         default:
-            return TCP_EVT_DROP;
+            break;
     }
+
+pedge_out:
+    if (con && edge != EVT_DROP)
+        *tcb = con;
+    return edge;
 }
 

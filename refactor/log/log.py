@@ -18,13 +18,6 @@ class Color:
     CYAN = '\033[96m'
     GRAY = '\033[90m'
 
-def display_hexdump(data):
-    for i in range(0, len(data), 16):
-        chunk = data[i:i+16]
-        hex_part = ' '.join(f'{b:02x}' for b in chunk)
-        ascii_part = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
-        print(f"{Color.GRAY}{i:04x}  {hex_part:<47}  {ascii_part}{Color.RESET}")
-
 def close(msg):
     print(f"\n\n{Color.YELLOW}[LOG]: Closing debugger...{Color.RESET}\n")
     sys.exit(msg)
@@ -70,7 +63,13 @@ def display_event(event_num, event_data):
             print(f"{Color.BOLD}TCP:{Color.RESET} "
                   f"Port {pkt[TCP].sport} → {pkt[TCP].dport} | "
                   f"Flags: {Color.YELLOW}{flags}{Color.RESET}")
-            
+        else:
+            for i in range(0, len(packet_bytes), 16):
+                chunk = packet_bytes[i:i+16]
+                hex_part = ' '.join(f'{b:02x}' for b in chunk)
+                ascii_part = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
+                print(f"{Color.GRAY}{i:04x}  {hex_part:<47}  {ascii_part}{Color.RESET}")
+                            
         print(f"{Color.GRAY}{pkt.summary()}{Color.RESET}")
         
     except Exception as e:

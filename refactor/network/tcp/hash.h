@@ -40,7 +40,7 @@ TCB *hash_find(ID id);
 bool hash_insert(TCB *tcb);
 
 /**
- * @brief Remove and free a TCB from the hash table.
+ * @brief Remove and free a TCB from the hash table. Sets TCB to NULL.
  * @param tcb TCB to remove (matched by ID, then freed)
  */
 void hash_delete(TCB *tcb);
